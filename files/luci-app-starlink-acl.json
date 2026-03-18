@@ -1,0 +1,15 @@
+{
+  "luci-app-starlink": {
+    "description": "LuCI Starlink Status Dashboard",
+    "read": {
+      "ubus": {
+        "luci.starlink": [ "status", "dish" ]
+      }
+    },
+    "write": {
+      "ubus": {
+        "luci.starlink": [ "reboot_dish", "disable_hw_offloading" ]
+      }
+    }
+  }
+}

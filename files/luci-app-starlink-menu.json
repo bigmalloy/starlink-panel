@@ -1,0 +1,13 @@
+{
+  "admin/network/starlink": {
+    "title": "Starlink",
+    "order": 50,
+    "action": {
+      "type": "view",
+      "path": "starlink/status"
+    },
+    "depends": {
+      "acl": [ "luci-app-starlink" ]
+    }
+  }
+}
