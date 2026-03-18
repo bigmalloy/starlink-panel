@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-starlink-panel
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=15
+PKG_RELEASE:=16
 
 PKG_MAINTAINER:=bigmalloy
 PKG_LICENSE:=MIT
@@ -58,14 +58,13 @@ endef
 
 define Package/luci-app-starlink-panel/postinst
 #!/bin/sh
-# setsid creates a new process group, fully detaching from apk so the
-# LuCI XHR response completes before uhttpd restarts.
-setsid sh -c '{
-    /usr/bin/install-grpcurl || echo "Warning: grpcurl install failed. Run /usr/bin/install-grpcurl manually."
-    [ -f /etc/init.d/rpcd ]   && /etc/init.d/rpcd restart
-    [ -f /etc/init.d/uhttpd ] && rm -rf /tmp/luci-modulecache /tmp/luci-indexcache
-    [ -f /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart
-}' </dev/null >/dev/null 2>&1 &
+# Restart rpcd synchronously (fast, ~1s) so the RPC method is registered
+# before the browser makes its next call.  Clear LuCI caches so the JS
+# view is picked up without needing uhttpd restart.
+# Download starlink-dish fully detached so the XHR response is never aborted.
+[ -f /etc/init.d/rpcd ] && /etc/init.d/rpcd restart
+rm -rf /tmp/luci-modulecache /tmp/luci-indexcache
+setsid sh -c '/usr/bin/install-grpcurl >/dev/null 2>&1' </dev/null >/dev/null 2>&1 &
 exit 0
 endef
 
