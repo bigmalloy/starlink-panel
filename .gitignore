@@ -1,2 +1,4 @@
 output/
 CLAUDE.md
+rust-src/vendor/
+starlink-dish-0.1.0.tar.gz
