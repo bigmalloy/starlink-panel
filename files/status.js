@@ -6,25 +6,25 @@
 // ── RPC declarations ──────────────────────────────────────────────────────────
 
 var callStatus = rpc.declare({
-	object: 'luci.starlink',
+	object: 'luci.starlink-panel',
 	method: 'status',
 	expect: {}
 });
 
 var callDish = rpc.declare({
-	object: 'luci.starlink',
+	object: 'luci.starlink-panel',
 	method: 'dish',
 	expect: {}
 });
 
 var callRebootDish = rpc.declare({
-	object: 'luci.starlink',
+	object: 'luci.starlink-panel',
 	method: 'reboot_dish',
 	expect: {}
 });
 
 var callDisableHwOffloading = rpc.declare({
-	object: 'luci.starlink',
+	object: 'luci.starlink-panel',
 	method: 'disable_hw_offloading',
 	expect: {}
 });

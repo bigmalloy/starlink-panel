@@ -59,14 +59,14 @@ Download the public key from the [latest release](../../releases/latest).
 ### Install via SSH
 
 ```sh
-scp -O luci-app-starlink-*.apk root@192.168.1.1:/tmp/
-ssh root@192.168.1.1 'apk add /tmp/luci-app-starlink-*.apk'
+scp -O luci-app-starlink-panel-*.apk root@192.168.1.1:/tmp/
+ssh root@192.168.1.1 'apk add /tmp/luci-app-starlink-panel-*.apk'
 ```
 
 ### Install without key verification
 
 ```sh
-ssh root@192.168.1.1 'apk add --allow-untrusted /tmp/luci-app-starlink-*.apk'
+ssh root@192.168.1.1 'apk add --allow-untrusted /tmp/luci-app-starlink-panel-*.apk'
 ```
 
 The post-install script automatically downloads and installs `grpcurl`, then restarts `rpcd` and `uhttpd`. Navigate to **Network → Starlink** in LuCI.
@@ -77,10 +77,10 @@ The post-install script automatically downloads and installs `grpcurl`, then res
 
 ```sh
 echo 3 > /proc/sys/vm/drop_caches
-apk add --allow-untrusted /tmp/luci-app-starlink-*.apk
+apk add --allow-untrusted /tmp/luci-app-starlink-panel-*.apk
 ```
 
-Required if the `starlink/` directory was previously deleted (overlayfs negative dcache).
+Required if the `starlink-panel/` directory was previously deleted (overlayfs negative dcache).
 
 ---
 
@@ -92,7 +92,7 @@ Requires Docker.
 git clone https://github.com/bigmalloy/starlink-panel
 cd starlink-panel
 ./build-apk-docker.sh
-# Output: output/luci-app-starlink-*.apk
+# Output: output/luci-app-starlink-panel-*.apk
 ```
 
 Uses the official `openwrt/sdk:aarch64_cortex-a53-25.12.0-rc5` Docker image.

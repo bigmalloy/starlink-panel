@@ -1,6 +1,6 @@
 #!/bin/sh
-# /usr/libexec/rpcd/luci.starlink
-# RPCd backend for luci-app-starlink.
+# /usr/libexec/rpcd/luci.starlink-panel
+# RPCd backend for luci-app-starlink-panel.
 # Called by rpcd: $1=list|call, $2=method_name (when call)
 
 DISH_IP="192.168.100.1"

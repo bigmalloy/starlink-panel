@@ -1,10 +1,10 @@
 #!/bin/bash
 # build-apk-docker.sh
-# Builds luci-app-starlink as a proper OpenWrt 25+ APK using the OpenWrt SDK in Docker.
+# Builds luci-app-starlink-panel as a proper OpenWrt 25+ APK using the OpenWrt SDK in Docker.
 
 set -e
 
-PKG="luci-app-starlink"
+PKG="luci-app-starlink-panel"
 OPENWRT_VER="25.12.0-rc5"
 ARCH="aarch64_cortex-a53"
 SDK_IMAGE="openwrt/sdk:${ARCH}-${OPENWRT_VER}"
@@ -52,9 +52,9 @@ docker run --rm \
     cd "$SDK_DIR"
 
     echo "--- Setting up package feed ---"
-    mkdir -p package/luci-app-starlink/files
-    cp /pkg-src/Makefile package/luci-app-starlink/Makefile
-    cp /pkg-src/files/*  package/luci-app-starlink/files/
+    mkdir -p package/luci-app-starlink-panel/files
+    cp /pkg-src/Makefile package/luci-app-starlink-panel/Makefile
+    cp /pkg-src/files/*  package/luci-app-starlink-panel/files/
 
     echo "--- Updating feeds ---"
     ./scripts/feeds update -a 2>&1 | tail -5
@@ -62,14 +62,14 @@ docker run --rm \
 
     echo "--- Configuring ---"
     make defconfig 2>&1 | tail -3
-    echo "CONFIG_PACKAGE_luci-app-starlink=m" >> .config
+    echo "CONFIG_PACKAGE_luci-app-starlink-panel=m" >> .config
     make defconfig 2>&1 | tail -3
 
     echo "--- Compiling ---"
-    make package/luci-app-starlink/compile V=s 2>&1 | tail -20
+    make package/luci-app-starlink-panel/compile V=s 2>&1 | tail -20
 
     echo "--- Copying output ---"
-    APK=$(find bin/ -name "luci-app-starlink*.apk" -type f | head -1)
+    APK=$(find bin/ -name "luci-app-starlink-panel*.apk" -type f | head -1)
     cp "$APK" /output/
     echo "Copied: $APK"
 
@@ -89,13 +89,13 @@ docker run --rm \
 
 echo ""
 echo "================================================"
-ls -lh "${SCRIPT_DIR}/output/"luci-app-starlink* 2>/dev/null && \
+ls -lh "${SCRIPT_DIR}/output/"luci-app-starlink-panel* 2>/dev/null && \
   echo "Success!" || echo "No output — check errors above"
 echo "================================================"
 echo ""
 echo "Install on router (signed — needs key in /etc/apk/keys/):"
-echo "  scp -O output/luci-app-starlink-*.apk root@192.168.1.1:/tmp/"
-echo "  ssh root@192.168.1.1 'apk add /tmp/luci-app-starlink-*.apk'"
+echo "  scp -O output/luci-app-starlink-panel-*.apk root@192.168.1.1:/tmp/"
+echo "  ssh root@192.168.1.1 'apk add /tmp/luci-app-starlink-panel-*.apk'"
 echo ""
 echo "Or without key verification:"
-echo "  ssh root@192.168.1.1 'apk add --allow-untrusted /tmp/luci-app-starlink-*.apk'"
+echo "  ssh root@192.168.1.1 'apk add --allow-untrusted /tmp/luci-app-starlink-panel-*.apk'"
