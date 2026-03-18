@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-starlink-panel
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=17
+PKG_RELEASE:=18
 
 PKG_MAINTAINER:=bigmalloy
 PKG_LICENSE:=MIT
@@ -15,14 +15,14 @@ define Package/luci-app-starlink-panel
   SUBMENU:=3. Applications
   TITLE:=LuCI Starlink Status Dashboard
   URL:=https://github.com/bigmalloy/starlink-openwrt
-  DEPENDS:=+luci-base +rpcd +jsonfilter
+  DEPENDS:=+luci-base +rpcd
   PKGARCH:=all
 endef
 
 define Package/luci-app-starlink-panel/description
   LuCI dashboard for Starlink dish telemetry, IPv6 connectivity,
-  traffic, alignment, alerts, and router configuration. Requires
-  grpcurl at /usr/bin/grpcurl for dish gRPC data.
+  traffic, alignment, alerts, and router configuration. Uses
+  starlink-dish (installed automatically) for dish gRPC data.
 endef
 
 define Build/Compile
