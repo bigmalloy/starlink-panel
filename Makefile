@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-starlink-panel
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=16
+PKG_RELEASE:=17
 
 PKG_MAINTAINER:=bigmalloy
 PKG_LICENSE:=MIT

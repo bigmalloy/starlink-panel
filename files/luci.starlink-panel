@@ -49,6 +49,24 @@ json_str() {
     printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
+normalize_disablement() {
+    # grpcurl may return disablementCode as an integer when the enum name
+    # can't be resolved from server reflection.  Map to string names to
+    # match what starlink-dish (Rust) outputs.
+    case "$1" in
+        0|"")              echo "OKAY" ;;
+        1)                 echo "UNKNOWN_REASON" ;;
+        2)                 echo "AWAITING_PAYMENT" ;;
+        3)                 echo "HARDWARE_NOT_ACTIVATED" ;;
+        4)                 echo "HARDWARE_CHANGE_SUSPENDED" ;;
+        5)                 echo "ACCOUNT_DISABLED" ;;
+        OKAY|UNKNOWN_REASON|AWAITING_PAYMENT|HARDWARE_NOT_ACTIVATED|\
+HARDWARE_CHANGE_SUSPENDED|ACCOUNT_DISABLED)
+                           echo "$1" ;;
+        *)                 echo "OKAY" ;;
+    esac
+}
+
 get_ping_avg() {
     # Returns average RTT in ms, or empty string on failure
     ping -c 1 -W 2 "$1" 2>/dev/null \
@@ -122,13 +140,14 @@ query_dish_status() {
     # Gen3: state enum is absent when CONNECTED (proto3 omits zero-value fields).
     # Derive from disablementCode + readyStates.rf instead.
     state=$(echo "$raw"      | jsonfilter -e '@.dishGetStatus.state'                               2>/dev/null)
-    disablement=$(echo "$raw"| jsonfilter -e '@.dishGetStatus.disablementCode'                     2>/dev/null)
+    disablement=$(normalize_disablement \
+        "$(echo "$raw"| jsonfilter -e '@.dishGetStatus.disablementCode' 2>/dev/null)")
     local rf_ready
     rf_ready=$(echo "$raw"   | jsonfilter -e '@.dishGetStatus.readyStates.rf'                      2>/dev/null)
     if [ -z "$state" ]; then
         if [ "$disablement" = "OKAY" ] && [ "$rf_ready" = "true" ]; then
             state="CONNECTED"
-        elif [ -n "$disablement" ] && [ "$disablement" != "OKAY" ]; then
+        elif [ "$disablement" != "OKAY" ]; then
             state="DISABLED ($disablement)"
         else
             state="UNKNOWN"
@@ -241,7 +260,7 @@ query_dish_status() {
     printf ',"al_unexpected_location":"%s"'  "${al_unexp_loc:-false}"
     printf ',"al_install_pending":"%s"'      "${al_install:-false}"
     printf ',"al_no_eth_link":"%s"'          "${al_no_eth:-false}"
-    printf ',"disablement":"%s"'             "$(json_str "${disablement:-OKAY}")"
+    printf ',"disablement":"%s"'             "$(json_str "$disablement")"
     printf ',"dish_id":"%s"'                 "$(json_str "${dish_id:-}")"
     printf ',"country_code":"%s"'            "$(json_str "${country_code:-}")"
     printf ',"bootcount":%s'                 "$(echo "${bootcount:-0}" | grep -E '^[0-9]+$' || echo 0)"
