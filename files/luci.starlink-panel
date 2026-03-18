@@ -77,8 +77,14 @@ get_wan_qdisc() {
 # ── dish gRPC query ───────────────────────────────────────────────────────────
 
 query_dish_status() {
+    # Prefer starlink-dish (native Rust client, no reflection needed)
+    if command -v starlink-dish >/dev/null 2>&1; then
+        starlink-dish "http://${DISH_IP}:${DISH_PORT}" dish
+        return
+    fi
+
     if ! command -v grpcurl >/dev/null 2>&1; then
-        printf '{"available":false,"error":"grpcurl not found"}'
+        printf '{"available":false,"error":"starlink-dish and grpcurl not found — run /usr/bin/install-grpcurl"}'
         return
     fi
 
@@ -332,8 +338,12 @@ get_system_status() {
 # ── dish reboot ───────────────────────────────────────────────────────────────
 
 reboot_dish() {
+    if command -v starlink-dish >/dev/null 2>&1; then
+        starlink-dish "http://${DISH_IP}:${DISH_PORT}" reboot
+        return
+    fi
     if ! command -v grpcurl >/dev/null 2>&1; then
-        printf '{"success":false,"error":"grpcurl not found"}'
+        printf '{"success":false,"error":"starlink-dish and grpcurl not found"}'
         return
     fi
     local result

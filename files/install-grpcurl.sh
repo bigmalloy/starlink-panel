@@ -1,73 +1,87 @@
 #!/bin/sh
-# install-grpcurl.sh — download and install grpcurl on OpenWrt
+# install-grpcurl.sh — install starlink-dish (primary) and grpcurl (fallback)
 #
-# Run this on the router:
-#   sh /tmp/install-grpcurl.sh
+# Run on the router after copying the APK:
+#   /usr/bin/install-grpcurl      (called automatically by APK postinst)
 #
-# Or from your dev machine:
-#   scp -O install-grpcurl.sh root@192.168.1.1:/tmp/
-#   ssh root@192.168.1.1 'sh /tmp/install-grpcurl.sh'
+# Or manually:
+#   ssh root@192.168.1.1 '/usr/bin/install-grpcurl'
 
 set -e
 
+ARCH=$(uname -m)
+
+# ── starlink-dish (primary gRPC client) ───────────────────────────────────────
+
+DISH_PATH="/usr/bin/starlink-dish"
+DISH_RELEASE="https://github.com/bigmalloy/starlink-panel/releases/latest/download/starlink-dish"
+
+install_starlink_dish() {
+    case "$ARCH" in
+        aarch64) ;;
+        *)
+            echo "starlink-dish: pre-built binary only available for aarch64; skipping."
+            return 1
+            ;;
+    esac
+
+    echo "Downloading starlink-dish..."
+    if wget -q -O "${DISH_PATH}.tmp" "$DISH_RELEASE" 2>/dev/null; then
+        mv "${DISH_PATH}.tmp" "$DISH_PATH"
+        chmod +x "$DISH_PATH"
+        echo "Installed: $DISH_PATH"
+        return 0
+    else
+        rm -f "${DISH_PATH}.tmp"
+        echo "Warning: starlink-dish download failed; falling back to grpcurl."
+        return 1
+    fi
+}
+
+if [ -x "$DISH_PATH" ]; then
+    echo "starlink-dish already installed."
+else
+    install_starlink_dish || true
+fi
+
+# ── grpcurl (fallback) ────────────────────────────────────────────────────────
+
 GRPCURL_VERSION="1.9.3"
-INSTALL_PATH="/usr/bin/grpcurl"
+GRPCURL_PATH="/usr/bin/grpcurl"
 BASE_URL="https://github.com/fullstorydev/grpcurl/releases/download/v${GRPCURL_VERSION}"
 
-# ── Check if already installed ────────────────────────────────────────────────
+# Skip grpcurl if starlink-dish is available
+if [ -x "$DISH_PATH" ]; then
+    echo "starlink-dish present — skipping grpcurl install."
+    exit 0
+fi
 
-if [ -x "$INSTALL_PATH" ]; then
-    CURRENT=$("$INSTALL_PATH" --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | head -1)
+if [ -x "$GRPCURL_PATH" ]; then
+    CURRENT=$("$GRPCURL_PATH" --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | head -1)
     if [ "$CURRENT" = "$GRPCURL_VERSION" ]; then
-        echo "grpcurl v${GRPCURL_VERSION} is already installed."
+        echo "grpcurl v${GRPCURL_VERSION} already installed."
         exit 0
-    else
-        echo "grpcurl v${CURRENT} found, upgrading to v${GRPCURL_VERSION}..."
     fi
 fi
 
-# ── Detect architecture ───────────────────────────────────────────────────────
-
-ARCH=$(uname -m)
 case "$ARCH" in
-    aarch64)           GRPCURL_ARCH="linux_arm64" ;;
-    x86_64)            GRPCURL_ARCH="linux_x86_64" ;;
-    armv7l)            GRPCURL_ARCH="linux_armv7" ;;
-    armv6l)            GRPCURL_ARCH="linux_armv6" ;;
-    i386|i686)         GRPCURL_ARCH="linux_386" ;;
+    aarch64)   GRPCURL_ARCH="linux_arm64"  ;;
+    x86_64)    GRPCURL_ARCH="linux_x86_64" ;;
+    armv7l)    GRPCURL_ARCH="linux_armv7"  ;;
+    armv6l)    GRPCURL_ARCH="linux_armv6"  ;;
+    i386|i686) GRPCURL_ARCH="linux_386"    ;;
     *)
-        echo "ERROR: Unsupported architecture: $ARCH"
-        echo "Download manually from: ${BASE_URL}"
+        echo "ERROR: Unsupported arch $ARCH; install grpcurl manually from $BASE_URL"
         exit 1
         ;;
 esac
 
 TARBALL="grpcurl_${GRPCURL_VERSION}_${GRPCURL_ARCH}.tar.gz"
-URL="${BASE_URL}/${TARBALL}"
-
-# ── Download and install ──────────────────────────────────────────────────────
-
-echo "Architecture : $ARCH -> $GRPCURL_ARCH"
-echo "Downloading  : $URL"
-
+echo "Downloading grpcurl..."
 cd /tmp
-wget -O "$TARBALL" "$URL"
+wget -q -O "$TARBALL" "${BASE_URL}/${TARBALL}"
 tar xzf "$TARBALL" grpcurl
-mv grpcurl "$INSTALL_PATH"
-chmod +x "$INSTALL_PATH"
+mv grpcurl "$GRPCURL_PATH"
+chmod +x "$GRPCURL_PATH"
 rm -f "$TARBALL"
-
-# ── Verify ────────────────────────────────────────────────────────────────────
-
-echo ""
-echo "Installed: $("$INSTALL_PATH" --version 2>&1)"
-echo ""
-echo "Testing dish connection..."
-if grpcurl -plaintext -connect-timeout 5 \
-    -d '{"getStatus":{}}' 192.168.100.1:9200 \
-    SpaceX.API.Device.Device/Handle > /dev/null 2>&1; then
-    echo "Dish reachable — grpcurl working correctly."
-else
-    echo "Dish not reachable (is the Starlink connected to WAN?)."
-    echo "grpcurl is installed correctly — dish connection test failed."
-fi
+echo "Installed: $("$GRPCURL_PATH" --version 2>&1)"
