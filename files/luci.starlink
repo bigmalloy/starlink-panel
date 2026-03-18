@@ -101,10 +101,17 @@ query_dish_status() {
 
     # Parse key fields with jsonfilter (available on all OpenWrt 22+)
     local state latency drop obst downlink uplink hw sw uptime
-    local snr_bool disablement eth_speed gps_sats elevation attitude
+    local snr_bool disablement eth_speed gps_sats gps_valid elevation attitude
     local al_heating al_throttle al_shutdown al_psu_throttle
-    local al_motors al_mast al_slow_eth al_roaming
-    local sw_update_state currently_obstructed
+    local al_motors al_mast al_slow_eth al_roaming al_unexp_loc al_install al_no_eth
+    local sw_update_state sw_reboot_ready currently_obstructed
+    local snr_low class_of_svc mobility secs_to_slot
+    local obst_avg_dur obst_avg_int obst_patches_valid outages
+    local dish_id country_code bootcount has_signed_cals
+    local rs_cady rs_scp rs_l1l2 rs_xphy rs_aap
+    local attitude_unc dl_restrict ul_restrict
+    local swupdate_reboot_hour
+    local init_stable init_first_ping init_gps
 
     # Gen3: state enum is absent when CONNECTED (proto3 omits zero-value fields).
     # Derive from disablementCode + readyStates.rf instead.
@@ -147,6 +154,31 @@ query_dish_status() {
     uptime=$(echo "$raw"     | jsonfilter -e '@.dishGetStatus.deviceInfo.upTimeS'                  2>/dev/null)
 
     # alerts — proto3 omits false booleans so absent == false == healthy
+    gps_valid=$(echo "$raw"         | jsonfilter -e '@.dishGetStatus.gpsStats.gpsValid'                   2>/dev/null)
+    snr_low=$(echo "$raw"           | jsonfilter -e '@.dishGetStatus.isSnrPersistentlyLow'                2>/dev/null)
+    sw_reboot_ready=$(echo "$raw"   | jsonfilter -e '@.dishGetStatus.softwareUpdateRebootReady'           2>/dev/null)
+    class_of_svc=$(echo "$raw"      | jsonfilter -e '@.dishGetStatus.classOfService'                      2>/dev/null)
+    mobility=$(echo "$raw"          | jsonfilter -e '@.dishGetStatus.mobilityClass'                       2>/dev/null)
+    secs_to_slot=$(echo "$raw"      | jsonfilter -e '@.dishGetStatus.secondsToFirstNonemptySlot'          2>/dev/null)
+    obst_avg_dur=$(echo "$raw"      | jsonfilter -e '@.dishGetStatus.obstructionStats.avgProlongedObstructionDurationS' 2>/dev/null)
+    obst_avg_int=$(echo "$raw"      | jsonfilter -e '@.dishGetStatus.obstructionStats.avgProlongedObstructionIntervalS' 2>/dev/null)
+    obst_patches_valid=$(echo "$raw"| jsonfilter -e '@.dishGetStatus.obstructionStats.patchesValid'       2>/dev/null)
+    dish_id=$(echo "$raw"           | jsonfilter -e '@.dishGetStatus.deviceInfo.id'                       2>/dev/null)
+    country_code=$(echo "$raw"      | jsonfilter -e '@.dishGetStatus.deviceInfo.countryCode'              2>/dev/null)
+    bootcount=$(echo "$raw"         | jsonfilter -e '@.dishGetStatus.deviceInfo.bootcount'                2>/dev/null)
+    has_signed_cals=$(echo "$raw"   | jsonfilter -e '@.dishGetStatus.hasSignedCals'                       2>/dev/null)
+    rs_cady=$(echo "$raw"           | jsonfilter -e '@.dishGetStatus.readyStates.cady'                    2>/dev/null)
+    rs_scp=$(echo "$raw"            | jsonfilter -e '@.dishGetStatus.readyStates.scp'                     2>/dev/null)
+    rs_l1l2=$(echo "$raw"           | jsonfilter -e '@.dishGetStatus.readyStates.l1l2'                    2>/dev/null)
+    rs_xphy=$(echo "$raw"           | jsonfilter -e '@.dishGetStatus.readyStates.xphy'                    2>/dev/null)
+    rs_aap=$(echo "$raw"            | jsonfilter -e '@.dishGetStatus.readyStates.aap'                     2>/dev/null)
+    attitude_unc=$(echo "$raw"      | jsonfilter -e '@.dishGetStatus.alignmentStats.attitudeUncertaintyDeg' 2>/dev/null)
+    dl_restrict=$(echo "$raw"       | jsonfilter -e '@.dishGetStatus.dlBandwidthRestrictedReason'         2>/dev/null)
+    ul_restrict=$(echo "$raw"       | jsonfilter -e '@.dishGetStatus.ulBandwidthRestrictedReason'         2>/dev/null)
+    swupdate_reboot_hour=$(echo "$raw" | jsonfilter -e '@.dishGetStatus.config.swupdateRebootHour'        2>/dev/null)
+    init_stable=$(echo "$raw"       | jsonfilter -e '@.dishGetStatus.initializationDurationSeconds.stableConnection' 2>/dev/null)
+    init_first_ping=$(echo "$raw"   | jsonfilter -e '@.dishGetStatus.initializationDurationSeconds.firstPopPing'     2>/dev/null)
+    init_gps=$(echo "$raw"          | jsonfilter -e '@.dishGetStatus.initializationDurationSeconds.gpsValid'         2>/dev/null)
     al_heating=$(echo "$raw"      | jsonfilter -e '@.dishGetStatus.alerts.isHeating'                    2>/dev/null)
     al_throttle=$(echo "$raw"     | jsonfilter -e '@.dishGetStatus.alerts.thermalThrottle'              2>/dev/null)
     al_shutdown=$(echo "$raw"     | jsonfilter -e '@.dishGetStatus.alerts.thermalShutdown'              2>/dev/null)
@@ -155,8 +187,12 @@ query_dish_status() {
     al_mast=$(echo "$raw"         | jsonfilter -e '@.dishGetStatus.alerts.mastNotVertical'              2>/dev/null)
     al_slow_eth=$(echo "$raw"     | jsonfilter -e '@.dishGetStatus.alerts.slowEthernetSpeeds'           2>/dev/null)
     al_roaming=$(echo "$raw"      | jsonfilter -e '@.dishGetStatus.alerts.roaming'                      2>/dev/null)
+    al_unexp_loc=$(echo "$raw"    | jsonfilter -e '@.dishGetStatus.alerts.unexpectedLocation'           2>/dev/null)
+    al_install=$(echo "$raw"      | jsonfilter -e '@.dishGetStatus.alerts.installPending'               2>/dev/null)
+    al_no_eth=$(echo "$raw"       | jsonfilter -e '@.dishGetStatus.alerts.noEthernetLink'               2>/dev/null)
     sw_update_state=$(echo "$raw" | jsonfilter -e '@.dishGetStatus.softwareUpdateState'                 2>/dev/null)
     currently_obstructed=$(echo "$raw" | jsonfilter -e '@.dishGetStatus.currentlyObstructed'            2>/dev/null)
+    outages=$(echo "$raw"         | jsonfilter -e '@.dishGetStatus.outages'                             2>/dev/null)
 
     printf '{"available":true'
     printf ',"state":"%s"'              "$(json_str "$state")"
@@ -178,6 +214,14 @@ query_dish_status() {
     printf ',"desired_elevation_deg":%s'     "${des_el:-0}"
     printf ',"bore_azimuth_deg":%s'          "${bore_az:-0}"
     printf ',"desired_azimuth_deg":%s'       "${des_az:-0}"
+    printf ',"gps_valid":"%s"'                "${gps_valid:-false}"
+    printf ',"snr_persistently_low":"%s"'    "${snr_low:-false}"
+    printf ',"sw_reboot_ready":"%s"'         "${sw_reboot_ready:-false}"
+    printf ',"class_of_service":"%s"'        "$(json_str "${class_of_svc:-}")"
+    printf ',"mobility_class":"%s"'          "$(json_str "${mobility:-}")"
+    printf ',"seconds_to_slot":%s'           "$(echo "${secs_to_slot:-0}" | grep -E '^[0-9]+(\.[0-9]+)?$' || echo 0)"
+    printf ',"avg_obstruction_dur":%s'       "$(echo "${obst_avg_dur:-0}" | grep -E '^[0-9]+(\.[0-9]+)?$' || echo 0)"
+    printf ',"avg_obstruction_int":%s'       "$(echo "${obst_avg_int:-0}" | grep -E '^[0-9]+(\.[0-9]+)?$' || echo 0)"
     printf ',"sw_update_state":"%s"'         "$(json_str "${sw_update_state:-IDLE}")"
     printf ',"currently_obstructed":"%s"'    "${currently_obstructed:-false}"
     printf ',"al_heating":"%s"'              "${al_heating:-false}"
@@ -188,7 +232,33 @@ query_dish_status() {
     printf ',"al_mast":"%s"'                 "${al_mast:-false}"
     printf ',"al_slow_eth":"%s"'             "${al_slow_eth:-false}"
     printf ',"al_roaming":"%s"'              "${al_roaming:-false}"
+    printf ',"al_unexpected_location":"%s"'  "${al_unexp_loc:-false}"
+    printf ',"al_install_pending":"%s"'      "${al_install:-false}"
+    printf ',"al_no_eth_link":"%s"'          "${al_no_eth:-false}"
     printf ',"disablement":"%s"'             "$(json_str "${disablement:-OKAY}")"
+    printf ',"dish_id":"%s"'                 "$(json_str "${dish_id:-}")"
+    printf ',"country_code":"%s"'            "$(json_str "${country_code:-}")"
+    printf ',"bootcount":%s'                 "$(echo "${bootcount:-0}" | grep -E '^[0-9]+$' || echo 0)"
+    printf ',"has_signed_cals":"%s"'         "${has_signed_cals:-false}"
+    printf ',"rs_rf":"%s"'                   "${rf_ready:-false}"
+    printf ',"rs_cady":"%s"'                 "${rs_cady:-false}"
+    printf ',"rs_scp":"%s"'                  "${rs_scp:-false}"
+    printf ',"rs_l1l2":"%s"'                 "${rs_l1l2:-false}"
+    printf ',"rs_xphy":"%s"'                 "${rs_xphy:-false}"
+    printf ',"rs_aap":"%s"'                  "${rs_aap:-false}"
+    printf ',"attitude_uncertainty_deg":%s'  "$(echo "${attitude_unc:-0}" | grep -E '^[0-9]+(\.[0-9]+)?$' || echo 0)"
+    printf ',"dl_restrict":"%s"'             "$(json_str "${dl_restrict:-NO_LIMIT}")"
+    printf ',"ul_restrict":"%s"'             "$(json_str "${ul_restrict:-NO_LIMIT}")"
+    printf ',"swupdate_reboot_hour":%s'      "$(echo "${swupdate_reboot_hour:-3}" | grep -E '^[0-9]+$' || echo 3)"
+    printf ',"obst_patches_valid":%s'        "$(echo "${obst_patches_valid:-0}" | grep -E '^[0-9]+$' || echo 0)"
+    printf ',"init_stable_s":%s'             "$(echo "${init_stable:-0}" | grep -E '^[0-9]+$' || echo 0)"
+    printf ',"init_first_ping_s":%s'         "$(echo "${init_first_ping:-0}" | grep -E '^[0-9]+$' || echo 0)"
+    printf ',"init_gps_s":%s'               "$(echo "${init_gps:-0}" | grep -E '^[0-9]+$' || echo 0)"
+    # Only embed outages if jsonfilter returned a JSON array
+    case "${outages}" in
+        \[*) printf ',"outages":%s' "${outages}" ;;
+        *)   printf ',"outages":[]' ;;
+    esac
     printf '}'
 }
 

@@ -121,10 +121,6 @@ var CSS = '<style>' +
 '.sl-big-item{text-align:center}' +
 '.sl-big-num{font-size:1.5em;font-weight:700;color:var(--sl-text)}' +
 '.sl-big-lbl{font-size:0.75em;color:var(--sl-muted);margin-top:2px}' +
-'.sl-cfg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}' +
-'.sl-cfg-item{background:#1c2128;border:1px solid var(--sl-border);border-radius:6px;padding:8px 10px}' +
-'.sl-cfg-k{font-size:0.75em;color:var(--sl-muted);margin-bottom:4px}' +
-'.sl-cfg-v{font-size:0.85em;font-weight:600}' +
 '.sl-qdisc{font-family:monospace;font-size:0.78em;color:var(--sl-muted);padding:8px;background:#1c2128;border-radius:4px;margin-top:10px;word-break:break-all}' +
 '.sl-na{color:var(--sl-muted);font-size:0.85em;font-style:italic;text-align:center;padding:12px 0}' +
 '.sl-note{background:#1c2128;border:1px solid var(--sl-border);border-left:3px solid var(--sl-accent);border-radius:0 4px 4px 0;padding:10px 12px;font-size:0.82em;color:var(--sl-muted);margin-top:8px}' +
@@ -179,14 +175,29 @@ function buildDishCard(d) {
 	body += row('SNR OK',      badge(snrOk ? 'yes' : 'no', snrOk ? 'ok' : 'err'));
 	body += row('Elevation',   elev.toFixed(1) + '°');
 
-	if (d.gps_sats && parseInt(d.gps_sats) > 0)
-		body += row('GPS Sats', parseInt(d.gps_sats));
+	if (d.gps_sats && parseInt(d.gps_sats) > 0) {
+		var gpsValid = d.gps_valid === 'true';
+		body += row('GPS', badge(parseInt(d.gps_sats) + ' sats', gpsValid ? 'ok' : 'warn') + (gpsValid ? '' : ' ' + badge('no fix', 'err')));
+	}
 	if (d.eth_speed_mbps && parseInt(d.eth_speed_mbps) > 0)
 		body += row('Ethernet', parseInt(d.eth_speed_mbps) + ' Mbps');
 	if (d.attitude)
 		body += row('Alignment', badge(d.attitude.replace('FILTER_', ''), 'info'));
 	if (d.uptime)
 		body += row('Dish Uptime', fmtUptime(d.uptime));
+	if (d.class_of_service && d.class_of_service !== 'UNKNOWN')
+		body += row('Service', badge(d.class_of_service.replace('CLASS_OF_SERVICE_', ''), 'info'));
+	if (d.mobility_class && d.mobility_class !== 'UNKNOWN' && d.mobility_class !== 'MOBILITY_CLASS_NONE')
+		body += row('Mobility', badge(d.mobility_class.replace('MOBILITY_CLASS_', ''), 'info'));
+	var secsToSlot = parseFloat(d.seconds_to_slot) || 0;
+	if (secsToSlot > 0 && secsToSlot < 600)
+		body += row('Next Slot', badge(secsToSlot.toFixed(0) + 's', 'warn'));
+	var obstDur = parseFloat(d.avg_obstruction_dur) || 0;
+	var obstInt = parseFloat(d.avg_obstruction_int) || 0;
+	if (obstDur > 0)
+		body += row('Avg Obstruction', obstDur.toFixed(1) + 's every ' + (obstInt > 0 ? obstInt.toFixed(0) + 's' : '—'));
+	if (d.sw_reboot_ready === 'true')
+		body += row('SW Update', badge('reboot required', 'warn'));
 
 	// Active alerts only
 	if (d.alert_thermal  === 'true') body += alertRow('Thermal throttle', 'active', true);
@@ -197,6 +208,15 @@ function buildDishCard(d) {
 
 	if (d.hardware) body += row('Dish HW',  '<span style="font-size:0.82em">' + d.hardware + '</span>');
 	if (d.software) body += row('Firmware', '<span style="font-size:0.82em">' + d.software + '</span>');
+	if (d.dish_id)  body += row('Dish ID',  '<span style="font-size:0.78em;font-family:monospace">' + d.dish_id + '</span>');
+	if (d.country_code) body += row('Country', d.country_code);
+	if (parseInt(d.bootcount) > 0) body += row('Boot Count', parseInt(d.bootcount).toLocaleString());
+	var rebootHour = parseInt(d.swupdate_reboot_hour);
+	if (!isNaN(rebootHour)) body += row('Daily Reboot', rebootHour + ':00 local');
+	var dlR = d.dl_restrict && d.dl_restrict !== 'NO_LIMIT' ? d.dl_restrict.replace(/_/g, '\u00a0') : null;
+	var ulR = d.ul_restrict && d.ul_restrict !== 'NO_LIMIT' ? d.ul_restrict.replace(/_/g, '\u00a0') : null;
+	if (dlR) body += row('DL Limit', badge(dlR, 'warn'));
+	if (ulR) body += row('UL Limit', badge(ulR, 'warn'));
 
 	return card('Dish Telemetry', '📡', body);
 }
@@ -226,7 +246,7 @@ function buildAlignmentCard(d) {
 	var tiltDir   = tiltDiff   < 0 ? '↓' : '↑';
 	var rotateDir = rotateDiff > 0 ? '↻' : '↶';
 
-	var aligned = Math.abs(tiltDiff) < 0.1 && Math.abs(rotateDiff) < 0.1;
+	var aligned = Math.abs(tiltDiff) < 5 && Math.abs(rotateDiff) < 5;
 
 	if (aligned) {
 		body += '<div class="sl-align-ok">✓ Dish is well aligned</div>';
@@ -245,6 +265,9 @@ function buildAlignmentCard(d) {
 	body += row('Elevation',       boreEl.toFixed(2) + '° → ' + desEl.toFixed(2) + '°');
 	body += row('Azimuth',         boreAz.toFixed(2) + '° → ' + desAz.toFixed(2) + '°');
 	if (d.attitude) body += row('Attitude', badge(d.attitude.replace('FILTER_', ''), 'info'));
+	var attUnc = parseFloat(d.attitude_uncertainty_deg) || 0;
+	if (attUnc > 0) body += row('Attitude Uncertainty', badge(attUnc.toFixed(2) + '°', attUnc < 1 ? 'ok' : attUnc < 3 ? 'warn' : 'err'));
+	if (d.has_actuators) body += row('Actuators', badge(d.has_actuators.replace('HAS_ACTUATORS_', ''), 'info'));
 
 	// Reboot button
 	body += '<button class="sl-reboot-btn" id="sl-reboot-btn" onclick="starlinkRebootDish(this)">⟳ Reboot Dish</button>';
@@ -282,7 +305,15 @@ function buildAlertsCard(d) {
 	body += alItem(ok(d.al_roaming),     'Moving at an acceptable speed',            'Moving too fast (roaming)');
 	body += alItem(notObstructed,        'Not obstructed',                           'Dish obstructed');
 	body += alItem(notDisabled,          'Not disabled',                             'Disabled: ' + d.disablement);
+	body += alItem(ok(d.snr_persistently_low), 'SNR normal',                        'SNR persistently low');
+	body += alItem(ok(d.al_unexpected_location), 'Location verified',               'Unexpected location');
+	body += alItem(ok(d.al_install_pending), 'Install complete',                    'Install pending');
+	var swRebootOk = d.sw_reboot_ready !== 'true';
+	body += alItem(swRebootOk,           'Software up to date',                     'Reboot required for SW update');
 	body += '</div>';
+
+	var heatingOn = d.al_heating === 'true';
+	body += row('Snow melt', badge(heatingOn ? 'ON' : 'OFF', heatingOn ? 'ok' : 'muted'));
 
 	return card('Alerts', '🔔', body);
 }
@@ -388,48 +419,72 @@ function buildQualityCard(s, d) {
 	return card('Quality', '📶', body);
 }
 
-function buildConfigCard(s) {
-	var body = '<div class="sl-cfg-grid">';
-
-	var tcp_cc = s.tcp_cc || 'unknown';
-	var qdisc  = s.default_qdisc || 'unknown';
-	var mtu    = s.mtu_fix === '1';
-	var swOff  = s.sw_offloading === '1';
-	var hwOff  = s.hw_offloading === '1';
-
-	// HW offloading requires flow_offloading=1 (SW) as a UCI prerequisite, so when
-	// HW is on both UCI values are 1. Show effective mode as a single row.
-	var offloadMode = hwOff ? 'hardware' : swOff ? 'software' : 'none';
-	var offloadClass = hwOff ? 'warn' : swOff ? 'ok' : 'muted';
-
-	var cfgItems = [
-		['TCP CC',        badge(tcp_cc,    tcp_cc === 'hybla' ? 'ok' : tcp_cc === 'cubic' ? 'warn' : 'info')],
-		['Default qdisc', badge(qdisc,     qdisc === 'fq_codel' && !hwOff ? 'ok' : 'warn')],
-		['MSS clamping',  badge(mtu ? 'enabled' : 'disabled', mtu ? 'ok' : 'warn')],
-		['Offloading',    badge(offloadMode, offloadClass)],
-		['WAN device',    badge(s.wan_dev || 'unknown', s.wan_dev ? 'ok' : 'warn')],
-	];
-
-	for (var i = 0; i < cfgItems.length; i++) {
-		body += '<div class="sl-cfg-item"><div class="sl-cfg-k">' + cfgItems[i][0] + '</div>' +
-			'<div class="sl-cfg-v">' + cfgItems[i][1] + '</div></div>';
+function buildReadyStatesCard(d) {
+	if (!d || !d.available) {
+		return card('Ready States', '🔌', '<div class="sl-na">No dish data</div>');
 	}
 
+	var t = function(v) { return v === 'true'; };
+	var body = '<div class="sl-al-list">';
+	body += alItem(t(d.rs_rf),   'RF',   'RF');
+	body += alItem(t(d.rs_l1l2), 'L1/L2','L1/L2');
+	body += alItem(t(d.rs_xphy), 'xPHY', 'xPHY');
+	body += alItem(t(d.rs_scp),  'SCP',  'SCP');
+	body += alItem(t(d.rs_aap),  'AAP',  'AAP');
 	body += '</div>';
 
-	if (s.wan_qdisc) {
-		body += '<div class="sl-qdisc">Active qdisc: ' + s.wan_qdisc + '</div>';
+	var signedCals = d.has_signed_cals === 'true';
+	body += row('Signed Cals', badge(signedCals ? 'yes' : 'no', signedCals ? 'ok' : 'warn'));
+
+	return card('Ready States', '🔌', body);
+}
+
+function buildBootStatsCard(d) {
+	if (!d || !d.available) return null;
+
+	var stable    = parseInt(d.init_stable_s)     || 0;
+	var firstPing = parseInt(d.init_first_ping_s)  || 0;
+	var gpsT      = parseInt(d.init_gps_s)         || 0;
+
+	if (!stable && !firstPing && !gpsT) return null;
+
+	var body = '';
+	if (gpsT)      body += row('GPS valid',       gpsT + 's');
+	if (firstPing) body += row('First PoP ping',  firstPing + 's');
+	if (stable)    body += row('Stable connection', badge(stable + 's', stable < 60 ? 'ok' : stable < 120 ? 'warn' : 'err'));
+	if (parseInt(d.obst_patches_valid) > 0)
+		body += row('Obstruction patches', parseInt(d.obst_patches_valid).toLocaleString());
+
+	return card('Boot Stats', '🚀', body);
+}
+
+function buildOutageCard(d) {
+	if (!d || !d.available || !d.outages || !d.outages.length) {
+		return card('Recent Outages', '⚡', '<div class="sl-na">No outage history</div>');
 	}
 
-	// Config warnings
-	if (s.tcp_cc && s.tcp_cc !== 'hybla') {
-		body += '<div class="sl-note">ℹ TCP congestion control is <strong>' + s.tcp_cc + '</strong>. For satellite links, hybla is preferred: <code>apk add kmod-tcp-hybla</code></div>';
-	}
-	if (s.max_preferred_lifetime === '' || s.max_preferred_lifetime === 'not_set') {
-		body += '<div class="sl-note">⚠ odhcpd prefix lifetime override is <strong>not set</strong> — LAN clients may see frequent IPv6 address churn from Starlink\'s short lifetimes (~129s).</div>';
+	// Outages are chronological oldest-first; show the 6 most recent
+	var outages = d.outages.slice(-6).reverse();
+	var body = '';
+
+	for (var i = 0; i < outages.length; i++) {
+		var o = outages[i];
+		var cause = (o.cause || 'UNKNOWN').replace(/_/g, '\u00a0');
+		var dur   = parseFloat(o.duration) || 0;
+		var durStr = dur < 1 ? '<1s' : dur < 60 ? dur.toFixed(1) + 's' : (dur / 60).toFixed(1) + 'm';
+		var tsMs  = (parseFloat(o.startTimestampNs) || 0) / 1e6;
+		var agoS  = tsMs > 0 ? Math.round((Date.now() - tsMs) / 1000) : 0;
+		var agoStr = agoS <= 0 ? '' : agoS < 60 ? agoS + 's\u00a0ago' :
+			agoS < 3600 ? Math.round(agoS / 60) + 'm\u00a0ago' :
+			Math.round(agoS / 3600) + 'h\u00a0ago';
+
+		var causeType = cause.indexOf('OBSTRUCTED') >= 0 ? 'warn' :
+			cause.indexOf('NO\u00a0SCHEDULE') >= 0 ? 'info' : 'err';
+
+		body += row(badge(cause, causeType), durStr + (agoStr ? '\u2002·\u2002' + agoStr : ''));
 	}
 
-	return card('Configuration', '⚙️', body, 'sl-card-full');
+	return card('Recent Outages', '⚡', body);
 }
 
 // ── Reboot handler (global so inline onclick can reach it) ───────────────────
@@ -511,7 +566,10 @@ return view.extend({
 		html += buildIPv6Card(s);
 		html += buildTrafficCard(s, d);
 		html += buildQualityCard(s, d);
-		html += buildConfigCard(s);
+		html += buildReadyStatesCard(d);
+		var bootCard = buildBootStatsCard(d);
+		if (bootCard) html += bootCard;
+		html += buildOutageCard(d);
 		html += '</div>';
 
 		html += '</div>';

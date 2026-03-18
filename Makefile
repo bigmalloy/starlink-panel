@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-starlink
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=5
+PKG_RELEASE:=12
 
 PKG_MAINTAINER:=bigmalloy
 PKG_LICENSE:=MIT
@@ -58,16 +58,19 @@ endef
 
 define Package/luci-app-starlink/postinst
 #!/bin/sh
-/usr/bin/install-grpcurl || echo "Warning: grpcurl install failed. Run /usr/bin/install-grpcurl manually."
-[ -f /etc/init.d/rpcd ]   && /etc/init.d/rpcd restart
-[ -f /etc/init.d/uhttpd ] && rm -rf /tmp/luci-modulecache /tmp/luci-indexcache
-[ -f /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart
+# setsid creates a new process group, fully detaching from apk so the
+# LuCI XHR response completes before uhttpd restarts.
+setsid sh -c '{
+    /usr/bin/install-grpcurl || echo "Warning: grpcurl install failed. Run /usr/bin/install-grpcurl manually."
+    [ -f /etc/init.d/rpcd ]   && /etc/init.d/rpcd restart
+    [ -f /etc/init.d/uhttpd ] && rm -rf /tmp/luci-modulecache /tmp/luci-indexcache
+    [ -f /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart
+}' </dev/null >/dev/null 2>&1 &
 exit 0
 endef
 
 define Package/luci-app-starlink/prerm
 #!/bin/sh
-[ -f /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart
 exit 0
 endef
 
