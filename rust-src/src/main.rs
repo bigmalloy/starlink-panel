@@ -88,20 +88,22 @@ async fn dish_status(addr: &str) -> Result<Value, Box<dyn std::error::Error>> {
     let init   = dish.initialization_duration_seconds.as_ref();
     let gps    = dish.gps_stats.as_ref();
 
-    // Map disablement_code i32 → string name (matches proto enum DishDisablementCode).
-    // 0 == OKAY (proto3 default, omitted on wire).
-    let dis_str = disablement_name(dish.disablement_code);
+    let rf = ready.map(|r| r.rf).unwrap_or(false);
 
-    // Infer state from disablement_code + RF ready (Gen3 omits state field when CONNECTED).
-    let state_str: String = {
-        let rf = ready.map(|r| r.rf).unwrap_or(false);
-        if dish.disablement_code == 0 && rf {
-            "CONNECTED".to_string()
-        } else if dish.disablement_code != 0 {
-            format!("DISABLED ({})", dis_str)
-        } else {
-            "UNKNOWN".to_string()
-        }
+    // Gen3 dishes report disablement_code=1 (UNKNOWN_REASON) even when fully
+    // connected.  Treat code 1 as OKAY when RF is ready — it is not a real
+    // disablement, just a firmware quirk on this hardware generation.
+    let effective_code = if dish.disablement_code == 1 && rf { 0 } else { dish.disablement_code };
+    let dis_str = disablement_name(effective_code);
+
+    // Infer state from effective disablement + RF ready
+    // (Gen3 omits state field on the wire when CONNECTED).
+    let state_str: String = if effective_code == 0 && rf {
+        "CONNECTED".to_string()
+    } else if effective_code != 0 {
+        format!("DISABLED ({})", dis_str)
+    } else {
+        "UNKNOWN".to_string()
     };
 
     let outages: Value = dish.outage.iter().map(|o| {

@@ -41,8 +41,4 @@ install_starlink_dish() {
     fi
 }
 
-if [ -x "$DISH_PATH" ]; then
-    echo "starlink-dish already installed."
-else
-    install_starlink_dish || true
-fi
+install_starlink_dish || true
