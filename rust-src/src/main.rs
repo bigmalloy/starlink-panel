@@ -52,6 +52,20 @@ async fn main() {
     println!("{}", output);
 }
 
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+fn disablement_name(code: i32) -> &'static str {
+    match code {
+        0 => "OKAY",
+        1 => "UNKNOWN_REASON",
+        2 => "AWAITING_PAYMENT",
+        3 => "HARDWARE_NOT_ACTIVATED",
+        4 => "HARDWARE_CHANGE_SUSPENDED",
+        5 => "ACCOUNT_DISABLED",
+        _ => "OKAY",   // treat unknown as okay rather than false-alerting
+    }
+}
+
 // ── dish status ───────────────────────────────────────────────────────────────
 
 async fn dish_status(addr: &str) -> Result<Value, Box<dyn std::error::Error>> {
@@ -74,15 +88,17 @@ async fn dish_status(addr: &str) -> Result<Value, Box<dyn std::error::Error>> {
     let init   = dish.initialization_duration_seconds.as_ref();
     let gps    = dish.gps_stats.as_ref();
 
+    // Map disablement_code i32 → string name (matches proto enum DishDisablementCode).
+    // 0 == OKAY (proto3 default, omitted on wire).
+    let dis_str = disablement_name(dish.disablement_code);
+
     // Infer state from disablement_code + RF ready (Gen3 omits state field when CONNECTED).
-    // disablement_code is i32; 0 == OKAY (proto3 default/omitted).
     let state_str: String = {
-        let dis = dish.disablement_code;
-        let rf  = ready.map(|r| r.rf).unwrap_or(false);
-        if dis == 0 && rf {
+        let rf = ready.map(|r| r.rf).unwrap_or(false);
+        if dish.disablement_code == 0 && rf {
             "CONNECTED".to_string()
-        } else if dis != 0 {
-            format!("DISABLED ({})", dis)
+        } else if dish.disablement_code != 0 {
+            format!("DISABLED ({})", dis_str)
         } else {
             "UNKNOWN".to_string()
         }
@@ -137,7 +153,7 @@ async fn dish_status(addr: &str) -> Result<Value, Box<dyn std::error::Error>> {
         "al_roaming":              alerts.map(|a| a.roaming).unwrap_or(false).to_string(),
         "al_unexpected_location":  alerts.map(|a| a.unexpected_location).unwrap_or(false).to_string(),
         "al_install_pending":      alerts.map(|a| a.install_pending).unwrap_or(false).to_string(),
-        "disablement":             dish.disablement_code,
+        "disablement":             dis_str,
         "dish_id":                 info.map(|d| d.id.as_str()).unwrap_or(""),
         "country_code":            info.map(|d| d.country_code.as_str()).unwrap_or(""),
         "bootcount":               info.map(|d| d.bootcount).unwrap_or(0),
