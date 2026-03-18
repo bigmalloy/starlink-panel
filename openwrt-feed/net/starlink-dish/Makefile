@@ -5,7 +5,7 @@ PKG_VERSION:=0.1.0
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://github.com/bigmalloy/starlink-openwrt/releases/download/v$(PKG_VERSION)/
+PKG_SOURCE_URL:=https://github.com/bigmalloy/starlink-panel/releases/download/v$(PKG_VERSION)/
 PKG_HASH:=7fce8982bb53e65ed6c1cf9de46d5edadd24911db731bf5bb5ee37dcef4e846c
 
 PKG_MAINTAINER:=bigmalloy
@@ -23,7 +23,7 @@ define Package/starlink-dish
   SECTION:=net
   CATEGORY:=Network
   TITLE:=Starlink dish gRPC client
-  URL:=https://github.com/bigmalloy/starlink-openwrt
+  URL:=https://github.com/bigmalloy/starlink-panel
   DEPENDS:=$(RUST_ARCH_DEPENDS)
 endef
 
