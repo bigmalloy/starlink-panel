@@ -5,8 +5,9 @@
 //! Outputs JSON on stdout; errors write {"available":false,"error":"..."}.
 //!
 //! Usage:
-//!   starlink-dish [addr] dish     — full dish telemetry JSON
-//!   starlink-dish [addr] reboot   — reboot the dish, outputs {"success":true|false}
+//!   starlink-dish dish            — full dish telemetry JSON
+//!   starlink-dish reboot          — reboot the dish, outputs {"success":true|false}
+//!   starlink-dish -d http://192.168.100.1:9200 dish   — override address
 
 use clap::Parser;
 use serde_json::{json, Value};
@@ -22,12 +23,12 @@ use starlink_grpc_client::space_x::api::device::{
 #[derive(Parser)]
 #[command(name = "starlink-dish", about = "Starlink dish gRPC CLI")]
 struct Args {
-    /// gRPC address (default: http://192.168.100.1:9200)
-    #[arg(default_value = "http://192.168.100.1:9200")]
-    addr: String,
-
     /// Command: dish | reboot
     command: String,
+
+    /// gRPC address override
+    #[arg(short = 'd', long = "dish", default_value = "http://192.168.100.1:9200")]
+    addr: String,
 }
 
 #[tokio::main]

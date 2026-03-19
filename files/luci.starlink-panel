@@ -81,7 +81,7 @@ query_dish_status() {
         printf '{"available":false,"error":"starlink-dish not found — run /usr/bin/install-grpcurl"}'
         return
     fi
-    starlink-dish "http://${DISH_IP}:${DISH_PORT}" dish
+    starlink-dish dish -d "http://${DISH_IP}:${DISH_PORT}"
 }
 
 # ── system status ─────────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ reboot_dish() {
         printf '{"success":false,"error":"starlink-dish not found — run /usr/bin/install-grpcurl"}'
         return
     fi
-    starlink-dish "http://${DISH_IP}:${DISH_PORT}" reboot
+    starlink-dish reboot -d "http://${DISH_IP}:${DISH_PORT}"
 }
 
 # ── disable hardware offloading ───────────────────────────────────────────────
