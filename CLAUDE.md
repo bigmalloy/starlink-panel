@@ -4,7 +4,7 @@
 
 OpenWrt LuCI package (`luci-app-starlink-panel`) providing a Starlink dish dashboard.
 Packaged as a signed APK for OpenWrt 25.x (`apk` package manager).
-**Current release: v1.0.0-r20**
+**Current release: v1.0.0-r22**
 
 Companion Rust binary (`starlink-dish`) handles gRPC communication with the dish at
 `192.168.100.1:9200`. It replaces grpcurl entirely. Supports `dish` (full telemetry)
@@ -59,6 +59,9 @@ ssh root@192.168.1.1 'apk add --allow-untrusted /tmp/luci-app-starlink-panel-*.a
 
 # Force-update starlink-dish binary (postinst always re-downloads):
 ssh root@192.168.1.1 '/usr/bin/install-grpcurl'
+
+# Or push the locally built binary directly:
+scp -O output/starlink-dish root@192.168.1.1:/usr/bin/starlink-dish
 ```
 
 ### Release process
@@ -77,8 +80,9 @@ Signing key lives at `/home/mike/claude/luci-fan/luci-app-fancontrol/keys/luci-f
 ### starlink-dish replaces grpcurl
 - grpcurl is ~15 MB; starlink-dish is 1.4 MB statically linked
 - Uses `starlink-grpc-client` crate (tonic 0.9 / prost 0.11) — proto defs included
-- Supports two commands: `starlink-dish <url> dish` (telemetry JSON) and `starlink-dish <url> reboot`
-- rpcd backend calls `starlink-dish http://192.168.100.1:9200 dish` directly
+- Default address is `http://192.168.100.1:9200` — no argument needed for standard setups
+- Usage: `starlink-dish dish` and `starlink-dish reboot`; override address with `-d <url>`
+- rpcd backend calls `starlink-dish dish -d "http://${DISH_IP}:${DISH_PORT}"`
 - install-grpcurl.sh removes `/usr/bin/grpcurl` if present on every install
 
 ### Gen3 dish quirks
