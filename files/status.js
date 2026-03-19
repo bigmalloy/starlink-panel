@@ -152,8 +152,7 @@ function buildDishCard(d) {
 	if (!d || !d.available) {
 		var reason = (d && d.error) ? d.error : 'unavailable';
 		body += '<div class="sl-na">Dish API: ' + reason + '</div>';
-		body += '<div class="sl-note">For live dish telemetry, install <code>grpcurl</code> (linux/arm64) to <code>/usr/bin/grpcurl</code>.<br>' +
-			'Download from <strong>github.com/fullstorydev/grpcurl/releases</strong></div>';
+		body += '<div class="sl-note">Ensure <code>starlink-dish</code> is installed at <code>/usr/bin/starlink-dish</code> and the dish is reachable at <code>192.168.100.1:9200</code>.</div>';
 		return card('Dish Telemetry', '📡', body);
 	}
 
