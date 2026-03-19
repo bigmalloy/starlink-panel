@@ -347,10 +347,8 @@ function buildIPv6Card(s) {
 		? badge('present', 'ok')
 		: badge('missing', 'err'));
 
-	body += row('Preferred LFT',
-		hasPrefLft ? badge(s.max_preferred_lifetime + 's', 'ok') : badge('not set', 'err'));
-	body += row('Valid LFT',
-		hasValidLft ? badge(s.max_valid_lifetime + 's', 'ok') : badge('not set', 'err'));
+	if (hasPrefLft) body += row('Preferred LFT', badge(s.max_preferred_lifetime + 's', 'ok'));
+	if (hasValidLft) body += row('Valid LFT',     badge(s.max_valid_lifetime + 's', 'ok'));
 
 	return card('IPv6 Connectivity', '🌐', body);
 }
