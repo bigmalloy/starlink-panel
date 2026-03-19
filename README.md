@@ -3,20 +3,21 @@
 LuCI dashboard for Starlink dish telemetry, alignment, alerts, IPv6 connectivity, traffic, and router configuration on OpenWrt 25.x.
 Works with Starlink Gen3 and higher dish.
 
-<img width="1180" height="1179" alt="image" src="https://github.com/user-attachments/assets/562686b3-83c6-411f-85a1-1a1c90b18eae" />
-
+![screenshot](docs/screenshot.png)
 
 ---
 
 ## Features
 
 - **Dish Telemetry** — state, uptime, latency, packet drop, obstruction %, throughput, SNR, GPS satellites, Ethernet speed, hardware/software version
-- **Alignment** — tilt and rotation guidance (↑↓ / ↻↶) with "well aligned" confirmation when within 0.1°
-- **Alerts** — 11 health indicators matching the Starlink app (heating, thermal throttle, shutdown, PSU throttle, motors, mast, slow Ethernet, software update, roaming, obstruction, disabled)
-- **IPv6 Connectivity** — WAN address, LAN address, delegated /56 prefix, default route
-- **Traffic** — WAN and LAN byte/packet counters
-- **Quality** — latency to 8.8.8.8 / 1.0.0.1, conntrack usage, router uptime
-- **Configuration** — TCP congestion control, qdisc, flow offloading, MTU fix, DHCPv6-PD lifetime settings
+- **Alignment** — tilt and rotation guidance (↑↓ / ↻↶) with "well aligned" confirmation when within 5°
+- **Alerts** — 15 health indicators (heating, thermal throttle, shutdown, PSU throttle, motors, mast, slow Ethernet, software update, roaming, obstruction, disabled, SNR low, unexpected location, install pending, reboot required)
+- **IPv6 Connectivity** — WAN address, LAN prefix, delegated /56, default route
+- **Traffic** — instantaneous up/down throughput from dish gRPC, WAN and LAN byte/packet counters
+- **Quality** — dish→PoP latency, pings to 8.8.8.8 / 1.0.0.1, conntrack usage, router uptime
+- **Ready States** — RF, L1/L2, xPHY, SCP, AAP ready flags
+- **Boot Stats** — time to GPS valid, first PoP ping, stable connection
+- **Recent Outages** — last 6 outages with cause and duration
 - **Reboot Dish** button with confirmation dialog
 
 Auto-refreshes every 10 seconds.
@@ -36,51 +37,44 @@ This package is designed to work alongside [starlink-openwrt-ipv6-optimized](htt
 | Requirement | Notes |
 |-------------|-------|
 | OpenWrt 25.x | Uses `apk` package manager; tested on 25.12.0 |
-| Architecture | `aarch64_cortex-a53` (GL-iNet Beryl AX / MT3000) — `PKGARCH=all` so installs on any architecture |
+| Architecture | `aarch64_cortex-a53` for the `starlink-dish` binary; `PKGARCH=all` so the APK installs on any architecture |
 | `luci-base` | LuCI web interface |
 | `rpcd` | RPC daemon (usually pre-installed) |
-| `jsonfilter` | JSON parser for shell scripts |
-| `grpcurl` | Required for dish telemetry — **installed automatically during `apk add`** |
 
 ---
 
 ## Installation
 
-### Prerequisites (run once per router)
+### Step 1 — Install the signing key (one-time)
 
-Install the signing key so packages verify without `--allow-untrusted`:
+**Via LuCI (System → Administration → Repo Public Keys):**
+1. Download [starlink-panel-signing.pub](https://github.com/bigmalloy/starlink-panel/raw/main/keys/starlink-panel-signing.pub)
+2. In LuCI go to **System → Administration**
+3. Click the **Repo Public Keys** tab
+4. Drag the downloaded `.pub` file into the box — it is added automatically
 
+**Or via CLI:**
 ```sh
-scp -O luci-fancontrol-signing.pub root@192.168.1.1:/etc/apk/keys/
+wget -O /etc/apk/keys/starlink-panel-signing.pub \
+  https://raw.githubusercontent.com/bigmalloy/starlink-panel/main/keys/starlink-panel-signing.pub
 ```
 
-Download the public key from the [latest release](../../releases/latest).
+### Step 2 — Install the package
 
-### Install via SSH
+**Via LuCI (System → Software):**
+1. Download `luci-app-starlink-panel-*.apk` from the [latest release](../../releases/latest)
+2. In LuCI go to **System → Software**
+3. Click **Upload Package...**, select the `.apk` file, click **Upload**
 
+**Or via CLI:**
 ```sh
 scp -O luci-app-starlink-panel-*.apk root@192.168.1.1:/tmp/
 ssh root@192.168.1.1 'apk add /tmp/luci-app-starlink-panel-*.apk'
 ```
 
-### Install without key verification
+Navigate to **Services → Starlink** in LuCI after install.
 
-```sh
-ssh root@192.168.1.1 'apk add --allow-untrusted /tmp/luci-app-starlink-panel-*.apk'
-```
-
-The post-install script automatically downloads and installs `grpcurl`, then restarts `rpcd` and `uhttpd`. Navigate to **Network → Starlink** in LuCI.
-
-> If grpcurl download fails (no internet at install time), run `/usr/bin/install-grpcurl` manually once connected.
-
-### Drop caches if reinstalling after removal
-
-```sh
-echo 3 > /proc/sys/vm/drop_caches
-apk add --allow-untrusted /tmp/luci-app-starlink-panel-*.apk
-```
-
-Required if the `starlink-panel/` directory was previously deleted (overlayfs negative dcache).
+> The post-install script downloads `starlink-dish` in the background. Dish telemetry cards populate on the next poll once the binary is present.
 
 ---
 
