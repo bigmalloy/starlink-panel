@@ -170,6 +170,7 @@ async fn dish_status(addr: &str) -> Result<Value, Box<dyn std::error::Error>> {
         "dl_restrict":             dish.dl_bandwidth_restricted_reason().as_str_name(),
         "ul_restrict":             dish.ul_bandwidth_restricted_reason().as_str_name(),
         "swupdate_reboot_hour":    dish.config.as_ref().map(|c| c.swupdate_reboot_hour).unwrap_or(3),
+        "snow_melt_mode":          dish.config.as_ref().map(|c| c.snow_melt_mode().as_str_name()).unwrap_or("AUTO"),
         "obst_patches_valid":      obst.map(|o| o.patches_valid).unwrap_or(0),
         "init_stable_s":           init.map(|i| i.stable_connection).unwrap_or(0),
         "init_first_ping_s":       init.map(|i| i.first_pop_ping).unwrap_or(0),

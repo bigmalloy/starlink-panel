@@ -312,7 +312,10 @@ function buildAlertsCard(d) {
 	body += '</div>';
 
 	var heatingOn = d.al_heating === 'true';
-	body += row('Snow melt', badge(heatingOn ? 'ON' : 'OFF', heatingOn ? 'ok' : 'muted'));
+	var snowMode  = (d.snow_melt_mode || 'AUTO').toUpperCase();
+	var snowLabel = snowMode === 'ALWAYS_ON' ? 'ALWAYS ON' : snowMode === 'ALWAYS_OFF' ? 'ALWAYS OFF' : 'AUTO';
+	var snowColor = snowMode === 'ALWAYS_OFF' ? 'muted' : 'ok';
+	body += row('Snow melt', badge(snowLabel, snowColor) + (heatingOn ? '&nbsp;' + badge('heating', 'warn') : ''));
 
 	return card('Alerts', '🔔', body);
 }
