@@ -23,12 +23,6 @@ var callRebootDish = rpc.declare({
 	expect: {}
 });
 
-var callDisableHwOffloading = rpc.declare({
-	object: 'luci.starlink-panel',
-	method: 'disable_hw_offloading',
-	expect: {}
-});
-
 // ── Formatters ────────────────────────────────────────────────────────────────
 
 function fmtBytes(b) {
@@ -199,11 +193,11 @@ function buildDishCard(d) {
 		body += row('SW Update', badge('reboot required', 'warn'));
 
 	// Active alerts only
-	if (d.alert_thermal  === 'true') body += alertRow('Thermal throttle', 'active', true);
-	if (d.alert_motors   === 'true') body += alertRow('Motors stuck',     'active', true);
-	if (d.alert_mast     === 'true') body += alertRow('Mast not vertical','active', true);
-	if (d.alert_slow_eth === 'true') body += alertRow('Slow ethernet',    'active', true);
-	if (d.alert_heating  === 'true') body += alertRow('Snow melt heating','active', true);
+	if (d.al_throttle === 'true') body += alertRow('Thermal throttle', 'active', true);
+	if (d.al_motors   === 'true') body += alertRow('Motors stuck',     'active', true);
+	if (d.al_mast     === 'true') body += alertRow('Mast not vertical','active', true);
+	if (d.al_slow_eth === 'true') body += alertRow('Slow ethernet',    'active', true);
+	if (d.al_heating  === 'true') body += alertRow('Snow melt heating','active', true);
 
 	if (d.hardware) body += row('Dish HW',  '<span style="font-size:0.82em">' + d.hardware + '</span>');
 	if (d.software) body += row('Firmware', '<span style="font-size:0.82em">' + d.software + '</span>');
@@ -287,7 +281,7 @@ function buildAlertsCard(d) {
 	}
 
 	var ok   = function(f) { return f !== 'true'; };
-	var swOk = d.sw_update_state === 'IDLE' || d.sw_update_state === '';
+	var swOk = d.sw_update_state === 'IDLE' || d.sw_update_state === '' || d.sw_update_state === 'SOFTWARE_UPDATE_STATE_UNKNOWN';
 	var notObstructed = d.currently_obstructed !== 'true' &&
 	                    parseFloat(d.fraction_obstructed || 0) < 0.005;
 	var notDisabled   = d.disablement === 'OKAY' || d.disablement === '';
@@ -529,11 +523,7 @@ return view.extend({
 
 		poll.add(function() {
 			return Promise.all([ callStatus(), callDish() ]).then(function(d) {
-				var s = d[0] || {};
-				if (s.hw_offloading === '1') {
-					callDisableHwOffloading();
-				}
-				self._updateView(container, s, d[1] || {});
+				self._updateView(container, d[0] || {}, d[1] || {});
 			});
 		}, 10);
 
@@ -541,6 +531,15 @@ return view.extend({
 	},
 
 	_updateView: function(container, s, d) {
+		// Preserve reboot button state across re-renders
+		var prevBtn = container.querySelector('#sl-reboot-btn');
+		var rebootBtnState = prevBtn && prevBtn.disabled ? {
+			text: prevBtn.textContent,
+			borderColor: prevBtn.style.borderColor,
+			color: prevBtn.style.color,
+			disabled: true
+		} : null;
+
 		var dishState = (d && d.available) ? (d.state || 'UNKNOWN') : null;
 		var isConn    = dishState === 'CONNECTED';
 		var now       = new Date().toLocaleTimeString();
@@ -574,5 +573,16 @@ return view.extend({
 
 		html += '</div>';
 		container.innerHTML = html;
+
+		// Restore reboot button state if it was in a triggered state
+		if (rebootBtnState) {
+			var btn = container.querySelector('#sl-reboot-btn');
+			if (btn) {
+				btn.disabled = true;
+				btn.textContent = rebootBtnState.text;
+				btn.style.borderColor = rebootBtnState.borderColor;
+				btn.style.color = rebootBtnState.color;
+			}
+		}
 	}
 });

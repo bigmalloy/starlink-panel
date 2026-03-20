@@ -4,7 +4,7 @@
 
 OpenWrt LuCI package (`luci-app-starlink-panel`) providing a Starlink dish dashboard.
 Packaged as a signed APK for OpenWrt 25.x (`apk` package manager).
-**Current release: v1.0.0-r22**
+**Current release: v1.0.0-r23**
 
 Companion Rust binary (`starlink-dish`) handles gRPC communication with the dish at
 `192.168.100.1:9200`. It replaces grpcurl entirely. Supports `dish` (full telemetry)

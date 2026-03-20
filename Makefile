@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-starlink-panel
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=22
+PKG_RELEASE:=23
 
 PKG_MAINTAINER:=bigmalloy
 PKG_LICENSE:=MIT
@@ -14,7 +14,7 @@ define Package/luci-app-starlink-panel
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
   TITLE:=LuCI Starlink Status Dashboard
-  URL:=https://github.com/bigmalloy/starlink-openwrt
+  URL:=https://github.com/bigmalloy/starlink-panel
   DEPENDS:=+luci-base +rpcd
   PKGARCH:=all
 endef
@@ -58,6 +58,8 @@ endef
 
 define Package/luci-app-starlink-panel/postinst
 #!/bin/sh
+# Skip service actions during image builds
+[ -n "$${IPKG_INSTROOT}" ] && exit 0
 # Restart rpcd synchronously (fast, ~1s) so the RPC method is registered
 # before the browser makes its next call.  Clear LuCI caches so the JS
 # view is picked up without needing uhttpd restart.
