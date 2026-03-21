@@ -144,9 +144,14 @@ function buildDishCard(d) {
 	var body = '';
 
 	if (!d || !d.available) {
-		var reason = (d && d.error) ? d.error : 'unavailable';
-		body += '<div class="sl-na">Dish API: ' + reason + '</div>';
-		body += '<div class="sl-note">Ensure <code>starlink-dish</code> is installed at <code>/usr/bin/starlink-dish</code> and the dish is reachable at <code>192.168.100.1:9200</code>.</div>';
+		var notInstalled = !d || !d.error || d.error.indexOf('not found') !== -1;
+		if (notInstalled) {
+			var reason = (d && d.error) ? d.error : 'unavailable';
+			body += '<div class="sl-na">Dish API: ' + reason + '</div>';
+			body += '<div class="sl-note">Ensure <code>starlink-dish</code> is installed at <code>/usr/bin/starlink-dish</code> and the dish is reachable at <code>192.168.100.1:9200</code>.</div>';
+		} else {
+			body += '<div class="sl-na">starlink-dish OK — dish unreachable (rebooting?)</div>';
+		}
 		return card('Dish Telemetry', '📡', body);
 	}
 
