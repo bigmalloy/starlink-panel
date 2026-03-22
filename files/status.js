@@ -171,7 +171,7 @@ function buildDishCard(d) {
 		drop < 0.001 ? 'ok' : drop < 0.01 ? 'warn' : 'err'));
 	body += row('Obstruction', badge(fmtPct(obst),
 		obst < 0.005 ? 'ok' : obst < 0.05 ? 'warn' : 'err'));
-	body += row('SNR OK',      badge(snrOk ? 'yes' : 'no', snrOk ? 'ok' : 'err'));
+	body += row('SNR OK',      badge(snrOk ? 'yes' : 'no', snrOk ? 'ok' : 'warn'));
 	body += row('Elevation',   elev.toFixed(1) + '°');
 
 	if (d.gps_sats && parseInt(d.gps_sats) > 0) {

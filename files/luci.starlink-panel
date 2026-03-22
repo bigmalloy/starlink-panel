@@ -19,8 +19,13 @@ get_wan_ipv6() {
 }
 
 get_lan_ipv6() {
-    ip -6 addr show dev br-lan 2>/dev/null \
-        | awk '/inet6[[:space:]].*scope global/ {print $2; exit}'
+    # Search all bridge interfaces (br-lan, br-lan.10, br-lan.20, etc.) for a
+    # global IPv6 prefix — with VLANs the prefix may not be on br-lan itself.
+    ip -6 addr show 2>/dev/null \
+        | awk '
+            /^[0-9]+:/ { split($2, a, "@"); iface = a[1]; sub(/:$/, "", iface) }
+            iface ~ /^br-/ && /inet6[[:space:]].*scope global/ { print $2; exit }
+        '
 }
 
 get_ipv6_default_route() {

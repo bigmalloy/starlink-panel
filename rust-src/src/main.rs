@@ -99,7 +99,13 @@ async fn dish_status(addr: &str) -> Result<Value, Box<dyn std::error::Error>> {
 
     // Infer state from effective disablement + RF ready
     // (Gen3 omits state field on the wire when CONNECTED).
-    let state_str: String = if effective_code == 0 && rf {
+    // In bridge/bypass mode the dish's IP stack is bypassed so rf may be false
+    // even when fully connected.  Use a non-zero PoP latency as a secondary
+    // connectivity indicator — the dish still measures satellite latency in
+    // bridge mode.
+    let latency_ok = dish.pop_ping_latency_ms > 0.0;
+    let is_connected = effective_code == 0 && (rf || latency_ok);
+    let state_str: String = if is_connected {
         "CONNECTED".to_string()
     } else if effective_code != 0 {
         format!("DISABLED ({})", dis_str)
