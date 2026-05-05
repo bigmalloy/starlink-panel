@@ -34,16 +34,7 @@ define Package/starlink-dish/description
   Used by luci-app-starlink-panel; can also be called from scripts.
 endef
 
-define Build/Compile
-	+$(CARGO_PKG_VARS) \
-	PROTOC=$(STAGING_DIR_HOST)/bin/protoc \
-	cargo install -v \
-		--profile $(CARGO_PKG_PROFILE) \
-		--root $(PKG_INSTALL_DIR) \
-		--path "$(PKG_BUILD_DIR)" \
-		$(if $(filter --jobserver%,$(PKG_JOBS)),,-j1) \
-		$(CARGO_PKG_ARGS)
-endef
+CARGO_PKG_VARS += PROTOC=$(STAGING_DIR_HOST)/bin/protoc
 
 $(eval $(call RustBinPackage,starlink-dish))
 $(eval $(call BuildPackage,starlink-dish))
