@@ -23,12 +23,6 @@ var callRebootDish = rpc.declare({
 	expect: {}
 });
 
-var callDisableHwOffloading = rpc.declare({
-	object: 'luci.starlink-panel',
-	method: 'disable_hw_offloading',
-	expect: {}
-});
-
 // ── Formatters ────────────────────────────────────────────────────────────────
 
 function fmtBytes(b) {
@@ -102,45 +96,46 @@ function alertRow(label, value, isAlert) {
 // ── CSS ───────────────────────────────────────────────────────────────────────
 
 var CSS = '<style>' +
-':root{--sl-bg:#0d1117;--sl-surface:#161b22;--sl-border:#30363d;--sl-text:#c9d1d9;--sl-muted:#8b949e;--sl-accent:#58a6ff;--sl-green:#3fb950;--sl-yellow:#d29922;--sl-red:#f85149}' +
-'.sl-wrap{background:var(--sl-bg);color:var(--sl-text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;padding:20px;border-radius:8px;min-height:400px}' +
+':root{--sl-border:rgba(0,0,0,0.15);--sl-subtle:rgba(0,0,0,0.05);--sl-muted:#555;--sl-accent:#0550ae;--sl-green:#1a7f37;--sl-yellow:#9a6700;--sl-red:#cf222e}' +
+'@media (prefers-color-scheme:dark){:root{--sl-border:rgba(255,255,255,0.12);--sl-subtle:rgba(255,255,255,0.06);--sl-muted:#8b949e;--sl-accent:#58a6ff;--sl-green:#3fb950;--sl-yellow:#d29922;--sl-red:#f85149}}' +
+'.sl-wrap{font-family:inherit;padding:20px;min-height:400px}' +
 '.sl-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--sl-border)}' +
 '.sl-title{font-size:1.3em;font-weight:700;color:var(--sl-accent);display:flex;align-items:center;gap:8px}' +
 '.sl-meta{font-size:0.8em;color:var(--sl-muted);display:flex;align-items:center;gap:10px}' +
 '.sl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}' +
-'.sl-card{background:var(--sl-surface);border:1px solid var(--sl-border);border-radius:8px;overflow:hidden}' +
+'.sl-card{border:1px solid var(--sl-border);border-radius:8px;overflow:hidden}' +
 '.sl-card-full{grid-column:1/-1}' +
 '.sl-card-hd{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--sl-border);font-size:0.88em;font-weight:600;color:var(--sl-muted);text-transform:uppercase;letter-spacing:.06em}' +
 '.sl-card-icon{font-size:1.1em}' +
 '.sl-card-bd{padding:12px 14px}' +
-'.sl-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #21262d;font-size:0.88em;gap:8px}' +
+'.sl-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--sl-border);font-size:0.88em;gap:8px}' +
 '.sl-row:last-child{border-bottom:none}' +
 '.sl-lbl{color:var(--sl-muted);white-space:nowrap}' +
-'.sl-val{font-weight:500;text-align:right;word-break:break-all;color:var(--sl-text)}' +
+'.sl-val{font-weight:500;text-align:right;word-break:break-all}' +
 '.sl-big-row{display:flex;justify-content:space-around;padding:10px 0}' +
 '.sl-big-item{text-align:center}' +
-'.sl-big-num{font-size:1.5em;font-weight:700;color:var(--sl-text)}' +
+'.sl-big-num{font-size:1.5em;font-weight:700}' +
 '.sl-big-lbl{font-size:0.75em;color:var(--sl-muted);margin-top:2px}' +
-'.sl-qdisc{font-family:monospace;font-size:0.78em;color:var(--sl-muted);padding:8px;background:#1c2128;border-radius:4px;margin-top:10px;word-break:break-all}' +
+'.sl-qdisc{font-family:monospace;font-size:0.78em;color:var(--sl-muted);padding:8px;background:var(--sl-subtle);border-radius:4px;margin-top:10px;word-break:break-all}' +
 '.sl-na{color:var(--sl-muted);font-size:0.85em;font-style:italic;text-align:center;padding:12px 0}' +
-'.sl-note{background:#1c2128;border:1px solid var(--sl-border);border-left:3px solid var(--sl-accent);border-radius:0 4px 4px 0;padding:10px 12px;font-size:0.82em;color:var(--sl-muted);margin-top:8px}' +
-'.sl-note code{background:#0d1117;padding:1px 5px;border-radius:3px;font-family:monospace;color:var(--sl-accent)}' +
+'.sl-note{background:var(--sl-subtle);border:1px solid var(--sl-border);border-left:3px solid var(--sl-accent);border-radius:0 4px 4px 0;padding:10px 12px;font-size:0.82em;color:var(--sl-muted);margin-top:8px}' +
+'.sl-note code{background:var(--sl-subtle);padding:1px 5px;border-radius:3px;font-family:monospace;color:var(--sl-accent)}' +
 '.sl-alert-row{margin-top:4px;font-size:0.85em;color:var(--sl-yellow)}' +
 '.sl-align-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:4px 0}' +
-'.sl-align-item{text-align:center;background:#1c2128;border:1px solid var(--sl-border);border-radius:6px;padding:12px 8px}' +
-'.sl-align-val{font-size:1.4em;font-weight:700;color:var(--sl-text);letter-spacing:-0.01em}' +
+'.sl-align-item{text-align:center;background:var(--sl-subtle);border:1px solid var(--sl-border);border-radius:6px;padding:12px 8px}' +
+'.sl-align-val{font-size:1.4em;font-weight:700;letter-spacing:-0.01em}' +
 '.sl-align-lbl{font-size:0.78em;color:var(--sl-muted);margin-top:4px}' +
 '.sl-align-ok{font-size:1.1em;font-weight:600;color:var(--sl-green);text-align:center;padding:8px}' +
-'.sl-reboot-btn{width:100%;margin-top:12px;padding:8px 0;background:#21262d;border:1px solid #f0883e;color:#f0883e;border-radius:6px;font-size:0.88em;font-weight:600;cursor:pointer;letter-spacing:.03em}' +
-'.sl-reboot-btn:hover{background:#2d1f0e;border-color:#f0883e}' +
+'.sl-reboot-btn{width:100%;margin-top:12px;padding:8px 0;background:var(--sl-subtle);border:1px solid #f0883e;color:#f0883e;border-radius:6px;font-size:0.88em;font-weight:600;cursor:pointer;letter-spacing:.03em}' +
+'.sl-reboot-btn:hover{background:rgba(240,136,62,0.15);border-color:#f0883e}' +
 '.sl-reboot-btn:disabled{opacity:0.4;cursor:not-allowed}' +
 '.sl-al-list{display:grid;grid-template-columns:1fr 1fr;gap:0}' +
-'.sl-al-item{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #21262d;font-size:0.87em}' +
+'.sl-al-item{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid var(--sl-border);font-size:0.87em}' +
 '.sl-al-item:nth-child(odd):last-child{grid-column:1/-1}' +
 '.sl-al-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}' +
 '.sl-al-ok{background:var(--sl-green)}' +
 '.sl-al-err{background:var(--sl-red)}' +
-'.sl-al-txt-ok{color:var(--sl-text)}' +
+'.sl-al-txt-ok{}' +
 '.sl-al-txt-err{color:var(--sl-red);font-weight:600}' +
 '</style>';
 
@@ -150,10 +145,14 @@ function buildDishCard(d) {
 	var body = '';
 
 	if (!d || !d.available) {
-		var reason = (d && d.error) ? d.error : 'unavailable';
-		body += '<div class="sl-na">Dish API: ' + reason + '</div>';
-		body += '<div class="sl-note">For live dish telemetry, install <code>grpcurl</code> (linux/arm64) to <code>/usr/bin/grpcurl</code>.<br>' +
-			'Download from <strong>github.com/fullstorydev/grpcurl/releases</strong></div>';
+		var notInstalled = !d || !d.error || d.error.indexOf('not found') !== -1;
+		if (notInstalled) {
+			var reason = (d && d.error) ? d.error : 'unavailable';
+			body += '<div class="sl-na">Dish API: ' + reason + '</div>';
+			body += '<div class="sl-note">Ensure <code>starlink-dish</code> is installed at <code>/usr/bin/starlink-dish</code> and the dish is reachable at <code>192.168.100.1:9200</code>.</div>';
+		} else {
+			body += '<div class="sl-na">starlink-dish OK — dish unreachable (rebooting?)</div>';
+		}
 		return card('Dish Telemetry', '📡', body);
 	}
 
@@ -172,7 +171,7 @@ function buildDishCard(d) {
 		drop < 0.001 ? 'ok' : drop < 0.01 ? 'warn' : 'err'));
 	body += row('Obstruction', badge(fmtPct(obst),
 		obst < 0.005 ? 'ok' : obst < 0.05 ? 'warn' : 'err'));
-	body += row('SNR OK',      badge(snrOk ? 'yes' : 'no', snrOk ? 'ok' : 'err'));
+	body += row('SNR OK',      badge(snrOk ? 'yes' : 'no', snrOk ? 'ok' : 'warn'));
 	body += row('Elevation',   elev.toFixed(1) + '°');
 
 	if (d.gps_sats && parseInt(d.gps_sats) > 0) {
@@ -200,11 +199,11 @@ function buildDishCard(d) {
 		body += row('SW Update', badge('reboot required', 'warn'));
 
 	// Active alerts only
-	if (d.alert_thermal  === 'true') body += alertRow('Thermal throttle', 'active', true);
-	if (d.alert_motors   === 'true') body += alertRow('Motors stuck',     'active', true);
-	if (d.alert_mast     === 'true') body += alertRow('Mast not vertical','active', true);
-	if (d.alert_slow_eth === 'true') body += alertRow('Slow ethernet',    'active', true);
-	if (d.alert_heating  === 'true') body += alertRow('Snow melt heating','active', true);
+	if (d.al_throttle === 'true') body += alertRow('Thermal throttle', 'active', true);
+	if (d.al_motors   === 'true') body += alertRow('Motors stuck',     'active', true);
+	if (d.al_mast     === 'true') body += alertRow('Mast not vertical','active', true);
+	if (d.al_slow_eth === 'true') body += alertRow('Slow ethernet',    'active', true);
+	if (d.al_heating  === 'true') body += alertRow('Snow melt heating','active', true);
 
 	if (d.hardware) body += row('Dish HW',  '<span style="font-size:0.82em">' + d.hardware + '</span>');
 	if (d.software) body += row('Firmware', '<span style="font-size:0.82em">' + d.software + '</span>');
@@ -288,7 +287,7 @@ function buildAlertsCard(d) {
 	}
 
 	var ok   = function(f) { return f !== 'true'; };
-	var swOk = d.sw_update_state === 'IDLE' || d.sw_update_state === '';
+	var swOk = d.sw_update_state === 'IDLE' || d.sw_update_state === '' || d.sw_update_state === 'SOFTWARE_UPDATE_STATE_UNKNOWN';
 	var notObstructed = d.currently_obstructed !== 'true' &&
 	                    parseFloat(d.fraction_obstructed || 0) < 0.005;
 	var notDisabled   = d.disablement === 'OKAY' || d.disablement === '';
@@ -313,7 +312,10 @@ function buildAlertsCard(d) {
 	body += '</div>';
 
 	var heatingOn = d.al_heating === 'true';
-	body += row('Snow melt', badge(heatingOn ? 'ON' : 'OFF', heatingOn ? 'ok' : 'muted'));
+	var snowMode  = (d.snow_melt_mode || 'AUTO').toUpperCase();
+	var snowLabel = snowMode === 'ALWAYS_ON' ? 'ALWAYS ON' : snowMode === 'ALWAYS_OFF' ? 'ALWAYS OFF' : 'AUTO';
+	var snowColor = snowMode === 'ALWAYS_OFF' ? 'muted' : 'ok';
+	body += row('Snow melt', badge(snowLabel, snowColor) + (heatingOn ? '&nbsp;' + badge('heating', 'warn') : ''));
 
 	return card('Alerts', '🔔', body);
 }
@@ -347,10 +349,8 @@ function buildIPv6Card(s) {
 		? badge('present', 'ok')
 		: badge('missing', 'err'));
 
-	body += row('Preferred LFT',
-		hasPrefLft ? badge(s.max_preferred_lifetime + 's', 'ok') : badge('not set', 'err'));
-	body += row('Valid LFT',
-		hasValidLft ? badge(s.max_valid_lifetime + 's', 'ok') : badge('not set', 'err'));
+	if (hasPrefLft) body += row('Preferred LFT', badge(s.max_preferred_lifetime + 's', 'ok'));
+	if (hasValidLft) body += row('Valid LFT',     badge(s.max_valid_lifetime + 's', 'ok'));
 
 	return card('IPv6 Connectivity', '🌐', body);
 }
@@ -529,11 +529,7 @@ return view.extend({
 
 		poll.add(function() {
 			return Promise.all([ callStatus(), callDish() ]).then(function(d) {
-				var s = d[0] || {};
-				if (s.hw_offloading === '1') {
-					callDisableHwOffloading();
-				}
-				self._updateView(container, s, d[1] || {});
+				self._updateView(container, d[0] || {}, d[1] || {});
 			});
 		}, 10);
 
@@ -541,6 +537,15 @@ return view.extend({
 	},
 
 	_updateView: function(container, s, d) {
+		// Preserve reboot button state across re-renders
+		var prevBtn = container.querySelector('#sl-reboot-btn');
+		var rebootBtnState = prevBtn && prevBtn.disabled ? {
+			text: prevBtn.textContent,
+			borderColor: prevBtn.style.borderColor,
+			color: prevBtn.style.color,
+			disabled: true
+		} : null;
+
 		var dishState = (d && d.available) ? (d.state || 'UNKNOWN') : null;
 		var isConn    = dishState === 'CONNECTED';
 		var now       = new Date().toLocaleTimeString();
@@ -574,5 +579,16 @@ return view.extend({
 
 		html += '</div>';
 		container.innerHTML = html;
+
+		// Restore reboot button state if it was in a triggered state
+		if (rebootBtnState) {
+			var btn = container.querySelector('#sl-reboot-btn');
+			if (btn) {
+				btn.disabled = true;
+				btn.textContent = rebootBtnState.text;
+				btn.style.borderColor = rebootBtnState.borderColor;
+				btn.style.color = rebootBtnState.color;
+			}
+		}
 	}
 });

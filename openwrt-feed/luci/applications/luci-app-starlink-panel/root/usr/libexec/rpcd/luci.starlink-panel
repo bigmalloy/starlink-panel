@@ -19,8 +19,13 @@ get_wan_ipv6() {
 }
 
 get_lan_ipv6() {
-    ip -6 addr show dev br-lan 2>/dev/null \
-        | awk '/inet6[[:space:]].*scope global/ {print $2; exit}'
+    # Search all bridge interfaces (br-lan, br-lan.10, br-lan.20, etc.) for a
+    # global IPv6 prefix — with VLANs the prefix may not be on br-lan itself.
+    ip -6 addr show 2>/dev/null \
+        | awk '
+            /^[0-9]+:/ { split($2, a, "@"); iface = a[1]; sub(/:$/, "", iface) }
+            iface ~ /^br-/ && /inet6[[:space:]].*scope global/ { print $2; exit }
+        '
 }
 
 get_ipv6_default_route() {
@@ -49,12 +54,6 @@ json_str() {
 }
 
 
-get_ping_avg() {
-    # Returns average RTT in ms, or empty string on failure
-    ping -c 1 -W 2 "$1" 2>/dev/null \
-        | sed -n 's|.*= [0-9.]*/\([0-9.]*\)/.*|\1|p'
-}
-
 get_conntrack_count() {
     cat /proc/sys/net/netfilter/nf_conntrack_count 2>/dev/null || echo "0"
 }
@@ -78,10 +77,10 @@ get_wan_qdisc() {
 
 query_dish_status() {
     if ! command -v starlink-dish >/dev/null 2>&1; then
-        printf '{"available":false,"error":"starlink-dish not installed — install the starlink-dish package"}'
+        printf '{"available":false,"error":"starlink-dish not found — install the starlink-dish package"}'
         return
     fi
-    starlink-dish "http://${DISH_IP}:${DISH_PORT}" dish
+    starlink-dish dish -d "http://${DISH_IP}:${DISH_PORT}"
 }
 
 # ── system status ─────────────────────────────────────────────────────────────
@@ -89,8 +88,8 @@ query_dish_status() {
 get_system_status() {
     local wan_dev wan_ipv6 lan_ipv6 ipv6_route delegated
     local wan_stats lan_stats ct_count ct_max
-    local tcp_cc def_qdisc wan_qdisc mtu_fix
-    local pref_lft valid_lft sw_off hw_off uptime_s
+    local tcp_cc def_qdisc wan_qdisc
+    local pref_lft valid_lft uptime_s
     local ping_8 ping_1
 
     wan_dev=$(get_wan_dev)
@@ -109,23 +108,19 @@ get_system_status() {
     def_qdisc=$(cat /proc/sys/net/core/default_qdisc 2>/dev/null || echo "unknown")
     wan_qdisc=$(get_wan_qdisc "$wan_dev")
 
-    mtu_fix=$(uci -q get firewall.@defaults[0].mtu_fix       2>/dev/null || echo "0")
-    sw_off=$(uci -q get firewall.@defaults[0].flow_offloading    2>/dev/null || echo "0")
-    hw_off=$(uci -q get firewall.@defaults[0].flow_offloading_hw 2>/dev/null || echo "0")
-
     pref_lft=$(uci -q get dhcp.lan.max_preferred_lifetime 2>/dev/null || echo "")
     valid_lft=$(uci -q get dhcp.lan.max_valid_lifetime    2>/dev/null || echo "")
 
     uptime_s=$(get_uptime_sec)
 
-    # Parallel pings — write to temp files, wait
+    # Parallel pings — write to PID-scoped temp files to avoid concurrent-request collisions
     ping -c 1 -W 2 8.8.8.8 2>/dev/null \
-        | sed -n 's|.*= [0-9.]*/\([0-9.]*\)/.*|\1|p' > /tmp/.sl_p8 &
+        | sed -n 's|.*= [0-9.]*/\([0-9.]*\)/.*|\1|p' > /tmp/.sl_p8.$$ &
     ping -c 1 -W 2 1.0.0.1 2>/dev/null \
-        | sed -n 's|.*= [0-9.]*/\([0-9.]*\)/.*|\1|p' > /tmp/.sl_p1 &
+        | sed -n 's|.*= [0-9.]*/\([0-9.]*\)/.*|\1|p' > /tmp/.sl_p1.$$ &
     wait
-    ping_8=$(cat /tmp/.sl_p8 2>/dev/null); rm -f /tmp/.sl_p8
-    ping_1=$(cat /tmp/.sl_p1 2>/dev/null); rm -f /tmp/.sl_p1
+    ping_8=$(cat /tmp/.sl_p8.$$ 2>/dev/null); rm -f /tmp/.sl_p8.$$
+    ping_1=$(cat /tmp/.sl_p1.$$ 2>/dev/null); rm -f /tmp/.sl_p1.$$
 
     printf '{'
     printf '"wan_dev":"%s",'             "$(json_str "$wan_dev")"
@@ -140,9 +135,6 @@ get_system_status() {
     printf '"tcp_cc":"%s",'              "$(json_str "$tcp_cc")"
     printf '"default_qdisc":"%s",'       "$(json_str "$def_qdisc")"
     printf '"wan_qdisc":"%s",'           "$(json_str "$wan_qdisc")"
-    printf '"mtu_fix":"%s",'             "$mtu_fix"
-    printf '"sw_offloading":"%s",'       "$sw_off"
-    printf '"hw_offloading":"%s",'       "$hw_off"
     printf '"max_preferred_lifetime":"%s",' "$(json_str "$pref_lft")"
     printf '"max_valid_lifetime":"%s",'     "$(json_str "$valid_lft")"
     printf '"uptime":%s,'                "$uptime_s"
@@ -155,33 +147,23 @@ get_system_status() {
 
 reboot_dish() {
     if ! command -v starlink-dish >/dev/null 2>&1; then
-        printf '{"success":false,"error":"starlink-dish not installed — install the starlink-dish package"}'
+        printf '{"success":false,"error":"starlink-dish not found — install the starlink-dish package"}'
         return
     fi
-    starlink-dish "http://${DISH_IP}:${DISH_PORT}" reboot
-}
-
-# ── disable hardware offloading ───────────────────────────────────────────────
-
-disable_hw_offloading() {
-    uci set firewall.@defaults[0].flow_offloading_hw=0
-    uci commit firewall
-    service firewall restart >/dev/null 2>&1
-    printf '{"success":true}'
+    starlink-dish reboot -d "http://${DISH_IP}:${DISH_PORT}"
 }
 
 # ── rpcd dispatch ─────────────────────────────────────────────────────────────
 
 case "$1" in
     list)
-        printf '{"status":{"timeout":20},"dish":{"timeout":10},"reboot_dish":{"timeout":15},"disable_hw_offloading":{"timeout":15}}'
+        printf '{"status":{"timeout":20},"dish":{"timeout":10},"reboot_dish":{"timeout":15}}'
         ;;
     call)
         case "$2" in
-            status)               get_system_status ;;
-            dish)                 query_dish_status ;;
-            reboot_dish)          reboot_dish ;;
-            disable_hw_offloading) disable_hw_offloading ;;
+            status)      get_system_status ;;
+            dish)        query_dish_status ;;
+            reboot_dish) reboot_dish ;;
         esac
         ;;
 esac
