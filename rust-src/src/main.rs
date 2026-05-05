@@ -26,7 +26,7 @@ use starlink_grpc_client::space_x::api::device::{
 #[derive(Parser)]
 #[command(name = "starlink-dish", about = "Starlink dish gRPC CLI")]
 struct Args {
-    /// Command: dish | reboot
+    /// Command: dish | reboot | set-heater-on | set-heater-off | set-heater-auto
     command: String,
 
     /// gRPC address override
@@ -234,8 +234,6 @@ async fn set_heater(addr: &str, mode: dish_config::SnowMeltMode) -> Result<Value
 // ── reboot ────────────────────────────────────────────────────────────────────
 
 async fn reboot_dish(addr: &str) -> Result<Value, Box<dyn std::error::Error>> {
-    // DeviceClient is generated against the same tonic version as the crate uses.
-    // We share the same tonic dep so Channel is compatible.
     let channel = tonic::transport::Channel::from_shared(addr.to_string())?
         .connect()
         .await?;
