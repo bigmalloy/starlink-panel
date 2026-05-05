@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=starlink-dish
@@ -6,9 +7,9 @@ PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/bigmalloy/starlink-panel/releases/download/v$(PKG_VERSION)/
-PKG_HASH:=7fce8982bb53e65ed6c1cf9de46d5edadd24911db731bf5bb5ee37dcef4e846c
+PKG_HASH:=3a2af795a91f9a8af1e8e49c16e7b3e94d7f11bebb8964682d69e744e6659596
 
-PKG_MAINTAINER:=bigmalloy
+PKG_MAINTAINER:=Mike Eiberg <eiberg.michael@gmail.com>
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
 
