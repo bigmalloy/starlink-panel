@@ -18,6 +18,9 @@ use starlink_grpc_client::space_x::api::device::{
     request::Request as OneofRequest,
     Request as DeviceRequest,
     RebootRequest,
+    DishSetConfigRequest,
+    DishConfig,
+    dish_config,
 };
 
 #[derive(Parser)]
@@ -44,8 +47,20 @@ async fn main() {
             Ok(v) => v,
             Err(e) => json!({"success": false, "error": e.to_string()}),
         },
+        "set-heater-on" => match set_heater(&args.addr, dish_config::SnowMeltMode::AlwaysOn).await {
+            Ok(v) => v,
+            Err(e) => json!({"success": false, "error": e.to_string()}),
+        },
+        "set-heater-off" => match set_heater(&args.addr, dish_config::SnowMeltMode::AlwaysOff).await {
+            Ok(v) => v,
+            Err(e) => json!({"success": false, "error": e.to_string()}),
+        },
+        "set-heater-auto" => match set_heater(&args.addr, dish_config::SnowMeltMode::Auto).await {
+            Ok(v) => v,
+            Err(e) => json!({"success": false, "error": e.to_string()}),
+        },
         other => {
-            eprintln!("Unknown command: {}. Use 'dish' or 'reboot'.", other);
+            eprintln!("Unknown command: {}. Use 'dish', 'reboot', 'set-heater-on', 'set-heater-off', or 'set-heater-auto'.", other);
             std::process::exit(1);
         }
     };
@@ -184,6 +199,36 @@ async fn dish_status(addr: &str) -> Result<Value, Box<dyn std::error::Error>> {
         "init_gps_s":              init.map(|i| i.gps_valid).unwrap_or(0),
         "outages":                 outages,
     }))
+}
+
+// ── heater (snow melt) config ─────────────────────────────────────────────────
+
+async fn set_heater(addr: &str, mode: dish_config::SnowMeltMode) -> Result<Value, Box<dyn std::error::Error>> {
+    let channel = tonic::transport::Channel::from_shared(addr.to_string())?
+        .connect()
+        .await?;
+
+    let mut client = DeviceClient::new(channel);
+
+    let req = DeviceRequest {
+        id: 0,
+        epoch_id: 0,
+        target_id: String::new(),
+        request: Some(OneofRequest::DishSetConfig(DishSetConfigRequest {
+            dish_config: Some(DishConfig {
+                snow_melt_mode: mode as i32,
+                apply_snow_melt_mode: true,
+                ..Default::default()
+            }),
+        })),
+    };
+
+    let resp = client.handle(tonic::Request::new(req)).await?;
+
+    use device::response::Response as OneofResponse;
+    let ok = matches!(resp.into_inner().response, Some(OneofResponse::DishSetConfig(_)));
+
+    Ok(json!({ "success": ok }))
 }
 
 // ── reboot ────────────────────────────────────────────────────────────────────
