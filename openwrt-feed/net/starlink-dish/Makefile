@@ -2,12 +2,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=starlink-dish
-PKG_VERSION:=0.1.0
+PKG_VERSION:=0.1.1
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/bigmalloy/starlink-panel/releases/download/v$(PKG_VERSION)/
-PKG_HASH:=5cef29fdeb0934b54b14ac09b4b1c05722175efe9fa53757164ee78c8e3d81b1
+PKG_HASH:=c4f2d95cdc149a68d7d4b9c6c984e079e7c84b5a9e63fe6b3513378f7a472d26
 
 PKG_MAINTAINER:=Mike Eiberg <eiberg.michael@gmail.com>
 PKG_LICENSE:=MIT
