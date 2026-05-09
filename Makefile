@@ -44,6 +44,8 @@ define Package/luci-app-starlink-panel/install
 	$(INSTALL_DIR) $(1)/www/luci-static/resources/view/starlink-panel
 	$(INSTALL_DATA) ./files/status.js \
 		$(1)/www/luci-static/resources/view/starlink-panel/status.js
+	$(INSTALL_DATA) ./files/status.css \
+		$(1)/www/luci-static/resources/view/starlink-panel/status.css
 
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./files/install-grpcurl.sh \
