@@ -56,6 +56,10 @@ function fmtPct(f) {
 	return (parseFloat(f) * 100).toFixed(2) + '%';
 }
 
+function esc(s) {
+	return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 // ── Tiny HTML helpers ─────────────────────────────────────────────────────────
 
 const BADGE_COLORS = {
@@ -69,7 +73,7 @@ const BADGE_COLORS = {
 
 function badge(text, type) {
 	var s = BADGE_COLORS[type] || BADGE_COLORS.muted;
-	return '<span style="' + s + ';padding:1px 8px;border-radius:10px;font-size:0.82em;font-weight:600;white-space:nowrap">' + String(text) + '</span>';
+	return '<span style="' + s + ';padding:1px 8px;border-radius:10px;font-size:0.82em;font-weight:600;white-space:nowrap">' + esc(String(text)) + '</span>';
 }
 
 function dot(ok) {
@@ -102,7 +106,7 @@ function buildDishCard(d) {
 		var notInstalled = !d || !d.error || d.error.indexOf('not found') !== -1;
 		if (notInstalled) {
 			var reason = (d && d.error) ? d.error : 'unavailable';
-			body += '<div class="sl-na">Dish API: ' + reason + '</div>';
+			body += '<div class="sl-na">Dish API: ' + esc(reason) + '</div>';
 			body += '<div class="sl-note">Ensure <code>starlink-dish</code> is installed at <code>/usr/bin/starlink-dish</code> and the dish is reachable at <code>192.168.100.1:9200</code>.</div>';
 		} else {
 			body += '<div class="sl-na">starlink-dish OK — dish unreachable (rebooting?)</div>';
@@ -159,10 +163,10 @@ function buildDishCard(d) {
 	if (d.al_slow_eth === 'true') body += alertRow('Slow ethernet',    'active', true);
 	if (d.al_heating  === 'true') body += alertRow('Snow melt heating','active', true);
 
-	if (d.hardware) body += row('Dish HW',  '<span style="font-size:0.82em">' + d.hardware + '</span>');
-	if (d.software) body += row('Firmware', '<span style="font-size:0.82em">' + d.software + '</span>');
-	if (d.dish_id)  body += row('Dish ID',  '<span style="font-size:0.78em;font-family:monospace">' + d.dish_id + '</span>');
-	if (d.country_code) body += row('Country', d.country_code);
+	if (d.hardware) body += row('Dish HW',  '<span style="font-size:0.82em">' + esc(d.hardware) + '</span>');
+	if (d.software) body += row('Firmware', '<span style="font-size:0.82em">' + esc(d.software) + '</span>');
+	if (d.dish_id)  body += row('Dish ID',  '<span style="font-size:0.78em;font-family:monospace">' + esc(d.dish_id) + '</span>');
+	if (d.country_code) body += row('Country', esc(d.country_code));
 	if (parseInt(d.bootcount) > 0) body += row('Boot Count', parseInt(d.bootcount).toLocaleString());
 	var rebootHour = parseInt(d.swupdate_reboot_hour);
 	if (!isNaN(rebootHour)) body += row('Daily Reboot', rebootHour + ':00 local');
@@ -254,10 +258,10 @@ function buildAlertsCard(d) {
 	body += alItem(ok(d.al_motors),      'Motors healthy',                           'Motors stuck');
 	body += alItem(ok(d.al_mast),        'Mast is near vertical',                    'Mast not vertical');
 	body += alItem(ok(d.al_slow_eth),    'Normal Ethernet speeds',                   'Slow Ethernet speeds');
-	body += alItem(swOk,                 'Software is up to date',                   'Software update: ' + d.sw_update_state);
+	body += alItem(swOk,                 'Software is up to date',                   'Software update: ' + esc(d.sw_update_state));
 	body += alItem(ok(d.al_roaming),     'Moving at an acceptable speed',            'Moving too fast (roaming)');
 	body += alItem(notObstructed,        'Not obstructed',                           'Dish obstructed');
-	body += alItem(notDisabled,          'Not disabled',                             'Disabled: ' + d.disablement);
+	body += alItem(notDisabled,          'Not disabled',                             'Disabled: ' + esc(d.disablement));
 	body += alItem(ok(d.snr_persistently_low), 'SNR normal',                        'SNR persistently low');
 	body += alItem(ok(d.al_unexpected_location), 'Location verified',               'Unexpected location');
 	body += alItem(ok(d.al_install_pending), 'Install complete',                    'Install pending');
@@ -286,17 +290,17 @@ function buildIPv6Card(s) {
 
 	body += row('WAN IPv6',
 		dot(hasWan) + (hasWan
-			? '<span style="font-size:0.82em;font-family:monospace">' + s.wan_ipv6 + '</span>'
+			? '<span style="font-size:0.82em;font-family:monospace">' + esc(s.wan_ipv6) + '</span>'
 			: badge('None', 'err')));
 
 	body += row('LAN Prefix',
 		dot(hasLan) + (hasLan
-			? '<span style="font-size:0.82em;font-family:monospace">' + s.lan_ipv6 + '</span>'
+			? '<span style="font-size:0.82em;font-family:monospace">' + esc(s.lan_ipv6) + '</span>'
 			: badge('None', 'err')));
 
 	if (hasPrefix) {
 		body += row('Delegated /56',
-			'<span style="font-size:0.82em;font-family:monospace">' + s.delegated_prefix + '</span>');
+			'<span style="font-size:0.82em;font-family:monospace">' + esc(s.delegated_prefix) + '</span>');
 	}
 
 	body += row('Default Route', hasRoute
