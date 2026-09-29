@@ -11,6 +11,7 @@
 
 use clap::Parser;
 use serde_json::{json, Value};
+use std::time::Duration;
 use starlink_grpc_client::client::DishClient;
 use starlink_grpc_client::space_x::api::device::{
     self as device,
@@ -38,24 +39,25 @@ struct Args {
 async fn main() {
     let args = Args::parse();
 
+    let addr = args.addr.as_str();
     let output = match args.command.as_str() {
-        "dish" => match dish_status(&args.addr).await {
+        "dish" => match with_timeout(addr, dish_status(addr)).await {
             Ok(v) => v,
             Err(e) => json!({"available": false, "error": e.to_string()}),
         },
-        "reboot" => match reboot_dish(&args.addr).await {
+        "reboot" => match with_timeout(addr, reboot_dish(addr)).await {
             Ok(v) => v,
             Err(e) => json!({"success": false, "error": e.to_string()}),
         },
-        "set-heater-on" => match set_heater(&args.addr, dish_config::SnowMeltMode::AlwaysOn).await {
+        "set-heater-on" => match with_timeout(addr, set_heater(addr, dish_config::SnowMeltMode::AlwaysOn)).await {
             Ok(v) => v,
             Err(e) => json!({"success": false, "error": e.to_string()}),
         },
-        "set-heater-off" => match set_heater(&args.addr, dish_config::SnowMeltMode::AlwaysOff).await {
+        "set-heater-off" => match with_timeout(addr, set_heater(addr, dish_config::SnowMeltMode::AlwaysOff)).await {
             Ok(v) => v,
             Err(e) => json!({"success": false, "error": e.to_string()}),
         },
-        "set-heater-auto" => match set_heater(&args.addr, dish_config::SnowMeltMode::Auto).await {
+        "set-heater-auto" => match with_timeout(addr, set_heater(addr, dish_config::SnowMeltMode::Auto)).await {
             Ok(v) => v,
             Err(e) => json!({"success": false, "error": e.to_string()}),
         },
@@ -69,6 +71,26 @@ async fn main() {
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+
+/// Upper bound for a whole command (connect + request). Without it, an
+/// unreachable dish address that silently drops packets blocks until the
+/// kernel gives up on the TCP handshake (~2 min), outliving rpcd's timeout.
+const DISH_TIMEOUT: Duration = Duration::from_secs(8);
+
+async fn with_timeout<F>(addr: &str, fut: F) -> Result<Value, Box<dyn std::error::Error>>
+where
+    F: std::future::Future<Output = Result<Value, Box<dyn std::error::Error>>>,
+{
+    match tokio::time::timeout(DISH_TIMEOUT, fut).await {
+        Ok(r) => r,
+        Err(_) => Err(format!(
+            "No Starlink dish detected at {} (no response within {} s)",
+            addr,
+            DISH_TIMEOUT.as_secs()
+        )
+        .into()),
+    }
+}
 
 fn disablement_name(code: i32) -> &'static str {
     match code {

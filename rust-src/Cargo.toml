@@ -1,6 +1,6 @@
 [package]
 name = "starlink-dish"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 description = "Starlink dish gRPC client for OpenWrt — replaces grpcurl in luci-app-starlink-panel"
 

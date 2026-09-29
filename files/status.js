@@ -102,6 +102,11 @@ function alertRow(label, value, isAlert) {
 function buildDishCard(d) {
 	var body = '';
 
+	if (d && d.pending) {
+		body += '<div class="sl-na">Checking for Starlink dish…</div>';
+		return card('Dish Telemetry', '📡', body);
+	}
+
 	if (!d || !d.available) {
 		var notInstalled = !d || !d.error || d.error.indexOf('not found') !== -1;
 		if (notInstalled) {
@@ -109,7 +114,11 @@ function buildDishCard(d) {
 			body += '<div class="sl-na">Dish API: ' + esc(reason) + '</div>';
 			body += '<div class="sl-note">Ensure <code>starlink-dish</code> is installed at <code>/usr/bin/starlink-dish</code> and the dish is reachable at <code>192.168.100.1:9200</code>.</div>';
 		} else {
-			body += '<div class="sl-na">starlink-dish OK — dish unreachable (rebooting?)</div>';
+			body += '<div class="sl-na">' + badge('No Starlink dish detected', 'err') + '</div>';
+			body += '<div class="sl-note">The dish did not respond at <code>192.168.100.1:9200</code>. ' +
+				'Check that it is powered on and connected to this router\'s WAN port. ' +
+				'After a dish reboot it can take a few minutes to respond again.</div>';
+			body += '<div class="sl-note">Details: ' + esc(d.error) + '</div>';
 		}
 		return card('Dish Telemetry', '📡', body);
 	}
@@ -476,8 +485,19 @@ return view.extend({
 	handleSave:      null,
 	handleReset:     null,
 
+	// Only router status blocks the initial render; the dish can take several
+	// seconds to time out when it is absent, so it is fetched after render.
 	load: function() {
-		return Promise.all([ callStatus(), callDish() ]);
+		return callStatus().catch(function() { return {}; });
+	},
+
+	_fetch: function() {
+		return Promise.all([
+			callStatus().catch(function() { return {}; }),
+			callDish().catch(function(e) {
+				return { available: false, error: 'RPC error: ' + ((e && e.message) || e) };
+			})
+		]);
 	},
 
 	render: function(data) {
@@ -492,13 +512,16 @@ return view.extend({
 			document.head.appendChild(link);
 		}
 
-		this._updateView(container, data[0] || {}, data[1] || {});
+		this._updateView(container, data || {}, { pending: true });
 
-		poll.add(function() {
-			return Promise.all([ callStatus(), callDish() ]).then(function(d) {
+		var refresh = function() {
+			return self._fetch().then(function(d) {
 				self._updateView(container, d[0] || {}, d[1] || {});
 			});
-		}, 10);
+		};
+
+		refresh();
+		poll.add(refresh, 10);
 
 		return container;
 	},
@@ -525,6 +548,10 @@ return view.extend({
 		html += '<div class="sl-meta">';
 		if (dishState) {
 			html += badge(dishState, isConn ? 'ok' : 'warn') + ' ';
+		} else if (d && d.pending) {
+			html += badge('CHECKING…', 'info') + ' ';
+		} else {
+			html += badge('NO DISH', 'err') + ' ';
 		}
 		html += '<span style="color:var(--sl-muted)">Updated ' + now + '</span>';
 		html += '</div></div>';
