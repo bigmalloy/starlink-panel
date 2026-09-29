@@ -24,7 +24,7 @@ use starlink_grpc_client::space_x::api::device::{
 };
 
 #[derive(Parser)]
-#[command(name = "starlink-dish", about = "Starlink dish gRPC CLI")]
+#[command(name = "starlink-dish", version, about = "Starlink dish gRPC CLI")]
 struct Args {
     /// Command: dish | reboot | set-heater-on | set-heater-off | set-heater-auto
     command: String,

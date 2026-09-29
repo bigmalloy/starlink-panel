@@ -2,12 +2,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=starlink-dish
-PKG_VERSION:=0.1.1
+PKG_VERSION:=0.1.2
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/bigmalloy/starlink-panel/releases/download/v$(PKG_VERSION)/
-PKG_HASH:=c4f2d95cdc149a68d7d4b9c6c984e079e7c84b5a9e63fe6b3513378f7a472d26
+PKG_HASH:=9d5d4ef4fb0026ce2e699fb45a95e8d706f80a45187bc176c3c57c11535c5a80
 
 PKG_MAINTAINER:=Mike Eiberg <eiberg.michael@gmail.com>
 PKG_LICENSE:=MIT
@@ -30,7 +30,8 @@ endef
 
 define Package/starlink-dish/description
   CLI tool that queries the Starlink dish gRPC API and outputs
-  JSON telemetry. Supports 'dish' (full status) and 'reboot' commands.
+  JSON telemetry. Supports 'dish' (full status), 'reboot' and
+  'set-heater-on/off/auto' (snow melt mode) commands.
   Used by luci-app-starlink-panel; can also be called from scripts.
 endef
 
