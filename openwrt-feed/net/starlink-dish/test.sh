@@ -2,6 +2,8 @@
 
 # shellcheck shell=busybox
 
+set -e
+
 case "$1" in
 starlink-dish)
 	starlink-dish --version | grep -F "$2"
